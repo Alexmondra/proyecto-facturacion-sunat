@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+    <!--
+    <include file="db/changelog/sql/001-create-table-facturas_280320261202.sql" relativeToChangelogFile="false"/>
+    -->
+
+    <includeAll path="db/changelog/sql/admin/" relativeToChangelogFile="false"/>
+
+</databaseChangeLog>
