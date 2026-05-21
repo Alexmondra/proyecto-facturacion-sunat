@@ -33,7 +33,16 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
+<<<<<<< HEAD
 .vscode/
 
 ### variables de entorno
 .env
+=======
+
+### variables de entorno
+.env
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
+>>>>>>> ecca9ef519c2520663ba033abd83a1a96dac0e34
