@@ -38,5 +38,11 @@ build/
 ### variables de entorno
 .env
 
+# Storage local de certificados y CPEs
+storage/
+*.pfx
+*.jks
+*.p12
+
 temp_auto_push.bat
 temp_interactive_push.bat

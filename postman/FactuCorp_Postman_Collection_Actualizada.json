@@ -1,0 +1,942 @@
+{
+  "info": {
+    "_postman_id": "b4dfeb24-0f1f-4b79-8906-45d6dec6b7d4",
+    "name": "FactuCorp - Sistema SaaS SUNAT (Completo y Actualizado)",
+    "description": "Colección completa y exhaustiva con Seguridad Multi-Tenant, Administración SaaS, Catálogo Oficial de Ubigeos (Amazonía), y las Nuevas APIs OpenAPI de Comprobantes (/comprobantes) y Notas (/notas).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Catálogo SUNAT & Ubigeos (Público / Auxiliar)",
+      "item": [
+        {
+          "name": "Buscar Ubigeos (por nombre o código)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalogo/ubigeos?query=iquitos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "catalogo", "ubigeos"],
+              "query": [{"key": "query", "value": "iquitos"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Departamentos (25 únicos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalogo/ubigeos/departamentos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "catalogo", "ubigeos", "departamentos"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Provincias por Departamento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalogo/ubigeos/provincias?departamento=Loreto",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "catalogo", "ubigeos", "provincias"],
+              "query": [{"key": "departamento", "value": "Loreto"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Distritos con bandera de Amazonía",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalogo/ubigeos/distritos?departamento=Loreto&provincia=Maynas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "catalogo", "ubigeos", "distritos"],
+              "query": [
+                {"key": "departamento", "value": "Loreto"},
+                {"key": "provincia", "value": "Maynas"}
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar Ubigeo por Código (6 dígitos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalogo/ubigeos/160101",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "catalogo", "ubigeos", "160101"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Plataforma (Admin & SaaS)",
+      "item": [
+        {
+          "name": "Planes",
+          "item": [
+            {
+              "name": "Listar Planes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/plans",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "plans"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Obtener Plan por ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/plans/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "plans", "1"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear Plan",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombrePlan\": \"Plan Startup Ilimitado\",\n  \"codigo\": \"STARTUP_01\",\n  \"limiteMensualBolsa\": 1000,\n  \"precioMensual\": 99.0,\n  \"estado\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/plans",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "plans"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar Plan (PUT)",
+              "request": {
+                "method": "PUT",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombrePlan\": \"Plan Startup Plus\",\n  \"codigo\": \"STARTUP_01\",\n  \"limiteMensualBolsa\": 1500,\n  \"precioMensual\": 120.0,\n  \"estado\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/plans/4",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "plans", "4"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Activar/Desactivar Plan (PATCH)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/plans/4/status?estado=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "plans", "4", "status"],
+                  "query": [{"key": "estado", "value": "true"}]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar Plan (DELETE)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/plans/4",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "plans", "4"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Cuentas SaaS (Clientes)",
+          "item": [
+            {
+              "name": "Listar Cuentas SaaS (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "accounts"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Obtener Cuenta por ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/accounts/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "accounts", "1"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear Cuenta SaaS",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Corporación Logística Andina S.A.\",\n  \"planId\": 1,\n  \"fechaCorte\": 15,\n  \"estado\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "accounts"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar Cuenta SaaS (PUT)",
+              "request": {
+                "method": "PUT",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Corporación Logística Andina SAC Actualizada\",\n  \"planId\": 2,\n  \"fechaCorte\": 20,\n  \"estado\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/accounts/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "accounts", "1"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Activar/Desactivar Cuenta (PATCH)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/accounts/1/status?estado=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "accounts", "1", "status"],
+                  "query": [{"key": "estado", "value": "true"}]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Regenerar AccessKey de Cuenta (PATCH)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/accounts/1/regenerate-key",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "accounts", "1", "regenerate-key"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Empresas Router (Tenants)",
+          "item": [
+            {
+              "name": "Listar Empresas Globales (Admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/companies",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "companies"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Listar Empresas por Cuenta SaaS",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/companies/by-account/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "companies", "by-account", "1"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Obtener Empresa Router por ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/companies/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "companies", "1"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Onboarding Empresa (Crea esquema tenant dinámico)",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"saasId\": 1,\n  \"ruc\": \"20609998877\",\n  \"razonSocial\": \"DISTRIBUIDORA COMERCIAL NORTE S.A.C.\",\n  \"direccionFiscal\": \"AV. INDUSTRIAL 789, CALLAO\",\n  \"logo\": \"https://mi-cdn.com/logos/empresa.png\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/companies/onboard",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "companies", "onboard"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar Empresa Router (PATCH)",
+              "request": {
+                "method": "PATCH",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"razonSocial\": \"DISTRIBUIDORA COMERCIAL NORTE RENOVADA S.A.C.\",\n  \"direccionFiscal\": \"AV. ARGENTINA 4567, CALLAO\",\n  \"logo\": \"https://mi-cdn.com/logos/nuevo-logo.png\",\n  \"estado\": \"ACTIVO\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/companies/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "companies", "1"]
+                },
+                "description": "Actualización unificada parcial de la empresa router (datos generales y/o estado: ACTIVO, INACTIVO, SUSPENDIDO)."
+              },
+              "response": []
+            },
+            {
+              "name": "Dar de Baja Empresa (DELETE)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/platform/companies/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "platform", "companies", "1"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [{"key": "token", "value": "{{admin_key}}", "type": "string"}]
+      }
+    },
+    {
+      "name": "2. Tenant - Gestión Comercial & Sucursales",
+      "item": [
+        {
+          "name": "Empresa & Configuración",
+          "item": [
+            {
+              "name": "Obtener Perfil y Configuración Consolidada de Empresa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {"key": "X-Tenant-ID", "value": "{{tenant_id}}", "type": "text"}
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/company",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "company"]
+                },
+                "description": "Retorna la vista consolidada de la empresa: datos comerciales, configuración fiscal completa (con webhook_url, credenciales SOL) y estado/metadatos del certificado digital instalado (o null si aún no se ha subido)."
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar Empresa y Configuración Fiscal (PATCH Unificado)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "X-Tenant-ID", "value": "{{tenant_id}}", "type": "text"}
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"razonSocial\": \"EMPRESA DE PRUEBA SUNAT S.A.\",\n  \"direccionFiscal\": \"AV. GARCILASO DE LA VEGA 1456, LIMA\",\n  \"logo\": \"https://mi-cdn.com/logos/empresa.png\",\n  \"entorno\": \"BETA\",\n  \"incluidoTributo\": true,\n  \"modoEmision\": \"PROPIO\",\n  \"idPse\": null,\n  \"webhookUrl\": \"https://mi-sistema.com/api/v1/sunat/webhook\",\n  \"envioAsincrono\": true,\n  \"userSol\": \"MODDATOS\",\n  \"passSol\": \"moddatos\",\n  \"sunatClientId\": \"\",\n  \"sunatClientSecret\": \"\",\n  \"numeroCuentaDetraccion\": \"00-000-000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/company",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "company"]
+                },
+                "description": "Endpoint unificado PATCH para actualizar parcialmente tanto los datos de la empresa (razón social, dirección, logo, entorno, incluido_tributo) como su configuración fiscal (webhookUrl, envío asíncrono, modo de emisión, credenciales SOL, etc.). Devuelve la entidad consolidada con su configuración y metadatos del certificado."
+              },
+              "response": []
+            },
+            {
+              "name": "Subir Certificado Digital (.pfx, .p12, .pem)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {"key": "X-Tenant-ID", "value": "{{tenant_id}}", "type": "text"}
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "password",
+                      "value": "12345678",
+                      "description": "Opcional para .pem sin cifrar (el sistema autogenera y gestiona internamente la clave de cifrado). Obligatorio para .pfx, .p12 o PEM con clave privada cifrada.",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/company/certificate",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "company", "certificate"]
+                },
+                "description": "Sube y valida un certificado digital (.pfx, .p12 o .pem). Si se sube un .pem sin contraseña (o vacía), el backend genera internamente una clave de protección segura y empaqueta el almacén PKCS12 (.pfx) para la firma UBL de SUNAT de forma 100% transparente. Por seguridad (OWASP), las contraseñas internas y las rutas físicas en disco nunca se exponen al cliente."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Sucursales",
+          "item": [
+            {
+              "name": "Listar Sucursales",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/branches",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "branches"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear Sucursal (Valida Ubigeo y asigna 0% si es Amazonía)",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"codigo\": \"0002\",\n  \"nombreSucursal\": \"Sucursal Iquitos Centro (Amazonía Exonerada)\",\n  \"ubigeo\": \"160101\",\n  \"direccion\": \"Jr. Próspero 450, Iquitos\",\n  \"telefono\": \"065-234567\",\n  \"email\": \"iquitos@empresa.com\",\n  \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/branches",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "branches"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Obtener Sucursal por ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/branches/01a09e6d-48c5-7e0e-b473-694c1ed428a9",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "branches", "01a09e6d-48c5-7e0e-b473-694c1ed428a9"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar Sucursal (PATCH Unificado)",
+              "request": {
+                "method": "PATCH",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombreSucursal\": \"Sucursal Iquitos Renovada\",\n  \"ubigeo\": \"160101\",\n  \"direccion\": \"Jr. Próspero 450 Oficina 2\",\n  \"telefono\": \"065-234568\",\n  \"email\": \"iquitos.nuevo@empresa.com\",\n  \"activo\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/branches/01a09e6d-48c5-7e0e-b473-694c1ed428a9",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "branches", "01a09e6d-48c5-7e0e-b473-694c1ed428a9"]
+                },
+                "description": "Actualiza parcialmente cualquier dato de la sucursal (nombre, dirección, ubigeo, teléfono, email, imagen, impuesto, estado activo/inactivo) en la empresa actual."
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar Sucursal (DELETE)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/branches/01a09e6d-48c5-7e0e-b473-694c1ed428a9",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "branches", "01a09e6d-48c5-7e0e-b473-694c1ed428a9"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Series y Correlativos",
+          "item": [
+            {
+              "name": "Listar Series de la Empresa",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/series",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "series"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear Serie Factura (F001)",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sucursalId\": \"01a09e6d-48c5-7e0e-b473-694c1ed428a9\",\n  \"tipoComprobante\": \"01\",\n  \"serie\": \"F001\",\n  \"correlativo\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/series",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "series"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear Serie Boleta (B001)",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sucursalId\": \"01a09e6d-48c5-7e0e-b473-694c1ed428a9\",\n  \"tipoComprobante\": \"03\",\n  \"serie\": \"B001\",\n  \"correlativo\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/series",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "series"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear Serie Nota de Crédito (FC01)",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sucursalId\": \"01a09e6d-48c5-7e0e-b473-694c1ed428a9\",\n  \"tipoComprobante\": \"07\",\n  \"serie\": \"FC01\",\n  \"correlativo\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/series",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "series"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar Serie (PATCH Unificado)",
+              "request": {
+                "method": "PATCH",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sucursalId\": \"01a09e6d-48c5-7e0e-b473-694c1ed428a9\",\n  \"tipoComprobante\": \"01\",\n  \"serie\": \"F001\",\n  \"correlativo\": 100\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/series/01a09e6d-48c8-7f20-a7dc-ef2ccb285123",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "series", "01a09e6d-48c8-7f20-a7dc-ef2ccb285123"]
+                },
+                "description": "Actualiza parcialmente la serie con su respectiva empresa y sucursal (código de serie, tipo de comprobante, sucursal destino o correlativo). Valida que pertenezca a la empresa actual y que si ya tiene comprobantes emitidos no se pueda cambiar el código de serie ni sucursal."
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar Serie (DELETE)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tenant/series/01a09e6d-48c8-7f20-a7dc-ef2ccb285123",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "tenant", "series", "01a09e6d-48c8-7f20-a7dc-ef2ccb285123"]
+                },
+                "description": "Elimina la serie física si y solo si su correlativo es 0 (no ha emitido comprobantes aún)."
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [{"key": "token", "value": "{{empresa_key}}", "type": "string"}]
+      }
+    },
+    {
+      "name": "3. Tenant - Comprobantes (/comprobantes - OpenAPI Spec)",
+      "item": [
+        {
+          "name": "1. Crear Factura Electrónica (01 - Contado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-comp-factura-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comprobante\": {\n    \"tipo_documento\": \"01\",\n    \"serie\": \"F001\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"10:00:00\",\n    \"forma_pago\": \"CONTADO\",\n    \"moneda\": \"PEN\",\n    \"cliente\": {\n      \"tipo_documento\": \"6\",\n      \"numero_documento\": \"20555666777\",\n      \"razon_social\": \"INVERSIONES TECNOLOGICAS DEL PERU S.A.C.\",\n      \"direccion\": \"Av. Las Begonias 450, San Isidro, Lima\"\n    },\n    \"items\": [\n      {\n        \"descripcion\": \"Laptop Dell XPS 15\",\n        \"cantidad\": 1,\n        \"unidad_medida\": \"NIU\",\n        \"valor_unitario\": 1000.00,\n        \"tipo_afectacion_igv\": \"10\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Crear Boleta de Venta (03)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-comp-boleta-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comprobante\": {\n    \"tipo_documento\": \"03\",\n    \"serie\": \"B001\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"10:15:00\",\n    \"forma_pago\": \"CONTADO\",\n    \"moneda\": \"PEN\",\n    \"cliente\": {\n      \"tipo_documento\": \"1\",\n      \"numero_documento\": \"76543210\",\n      \"razon_social\": \"Juan Pérez Quispe\"\n    },\n    \"items\": [\n      {\n        \"descripcion\": \"Mouse Óptico Inalámbrico\",\n        \"cantidad\": 2,\n        \"unidad_medida\": \"NIU\",\n        \"valor_unitario\": 50.00,\n        \"tipo_afectacion_igv\": \"10\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.1. Crear Boleta con Bolsa Plástica (ICBPER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-comp-boleta-icbper-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comprobante\": {\n    \"tipo_documento\": \"03\",\n    \"serie\": \"B001\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"10:20:00\",\n    \"forma_pago\": \"CONTADO\",\n    \"moneda\": \"PEN\",\n    \"cliente\": {\n      \"tipo_documento\": \"1\",\n      \"numero_documento\": \"76543210\",\n      \"razon_social\": \"Juan Pérez Quispe\"\n    },\n    \"items\": [\n      {\n        \"descripcion\": \"Gaseosa 500ml\",\n        \"cantidad\": 1,\n        \"unidad_medida\": \"NIU\",\n        \"valor_unitario\": 3.50,\n        \"tipo_afectacion_igv\": \"10\"\n      },\n      {\n        \"descripcion\": \"Bolsa plástica mediana\",\n        \"cantidad\": 1,\n        \"unidad_medida\": \"NIU\",\n        \"valor_unitario\": 0.10,\n        \"tipo_afectacion_igv\": \"10\",\n        \"icbper\": true,\n        \"cantidad_bolsas_icbper\": 1\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes"]
+            },
+            "description": "Emite una Boleta de Venta incluyendo el cobro de la bolsa plástica y el impuesto ICBPER (S/ 0.50 por bolsa fijado por SUNAT)."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Crear Factura al Crédito (Con Cuotas Validadas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-comp-factura-credito-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comprobante\": {\n    \"tipo_documento\": \"01\",\n    \"serie\": \"F001\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"10:30:00\",\n    \"forma_pago\": \"CREDITO\",\n    \"moneda\": \"PEN\",\n    \"cliente\": {\n      \"tipo_documento\": \"6\",\n      \"numero_documento\": \"20123456789\",\n      \"razon_social\": \"DISTRIBUIDORA LIMA NORTE S.A.\"\n    },\n    \"items\": [\n      {\n        \"codigo\": \"SRV-SRV01\",\n        \"descripcion\": \"Servidor Empresarial Cloud R640\",\n        \"cantidad\": 1,\n        \"unidad_medida\": \"NIU\",\n        \"valor_unitario\": 5000.00,\n        \"tipo_afectacion_igv\": \"10\"\n      }\n    ],\n    \"cuotas\": [\n      {\n        \"numero_cuota\": 1,\n        \"monto\": 2950.00,\n        \"fecha_vencimiento\": \"2026-10-24\"\n      },\n      {\n        \"numero_cuota\": 2,\n        \"monto\": 2950.00,\n        \"fecha_vencimiento\": \"2026-11-24\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Crear Factura con Detracción SPOT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-comp-factura-detraccion-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comprobante\": {\n    \"tipo_documento\": \"01\",\n    \"serie\": \"F001\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"11:00:00\",\n    \"forma_pago\": \"CONTADO\",\n    \"moneda\": \"PEN\",\n    \"cliente\": {\n      \"tipo_documento\": \"6\",\n      \"numero_documento\": \"20444555666\",\n      \"razon_social\": \"TRANSPORTES Y LOGISTICA PERU S.A.C.\"\n    },\n    \"items\": [\n      {\n        \"descripcion\": \"Servicio de Flete Terrestre Nacional\",\n        \"cantidad\": 1,\n        \"unidad_medida\": \"ZZ\",\n        \"valor_unitario\": 2000.00,\n        \"tipo_afectacion_igv\": \"10\"\n      }\n    ],\n    \"detraccion\": {\n      \"codigo_bien_servicio\": \"027\",\n      \"porcentaje\": 4.00,\n      \"monto\": 94.40,\n      \"medio_pago\": \"001\",\n      \"cuenta_banco_nacion\": \"00-041-123456\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Consultar Comprobante por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes/ce0ca940-1666-4843-81a5-5c00810ee2ee",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes", "ce0ca940-1666-4843-81a5-5c00810ee2ee"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Consultar Estado de Comprobante por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes/ce0ca940-1666-4843-81a5-5c00810ee2ee/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes", "ce0ca940-1666-4843-81a5-5c00810ee2ee", "estado"]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [{"key": "token", "value": "{{empresa_key}}", "type": "string"}]
+      }
+    },
+    {
+      "name": "4. Tenant - Notas Crédito / Débito (/notas - OpenAPI Spec)",
+      "item": [
+        {
+          "name": "1. Crear Nota de Crédito con Doc Referenciado Interno (Anulación Total)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-nota-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nota\": {\n    \"tipo_documento\": \"07\",\n    \"serie\": \"FC01\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"12:00:00\",\n    \"documento_referenciado_id\": \"ce0ca940-1666-4843-81a5-5c00810ee2ee\",\n    \"motivo_codigo\": \"01\",\n    \"motivo_descripcion\": \"Anulación de la operación\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/notas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "notas"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Crear Nota de Crédito Externa (Sin comprobante previo en sistema)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "demo-nota-ext-002", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nota\": {\n    \"tipo_documento\": \"07\",\n    \"serie\": \"FC01\",\n    \"fecha_emision\": \"2026-09-24\",\n    \"hora_emision\": \"12:30:00\",\n    \"tipo_documento_ref\": \"01\",\n    \"serie_ref\": \"F001\",\n    \"numero_ref\": 999,\n    \"fecha_emision_ref\": \"2026-09-10\",\n    \"motivo_codigo\": \"04\",\n    \"motivo_descripcion\": \"Descuento global por pronto pago\",\n    \"moneda\": \"PEN\",\n    \"cliente\": {\n      \"tipo_documento\": \"6\",\n      \"numero_documento\": \"20555666777\",\n      \"razon_social\": \"INVERSIONES TECNOLOGICAS DEL PERU S.A.C.\"\n    },\n    \"items\": [\n      {\n        \"descripcion\": \"Descuento comercial aplicado\",\n        \"cantidad\": 1,\n        \"unidad_medida\": \"ZZ\",\n        \"valor_unitario\": 200.00,\n        \"tipo_afectacion_igv\": \"10\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/notas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "notas"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Consultar Nota por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/notas/de0ca940-1666-4843-81a5-5c00810ee3ff",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "notas", "de0ca940-1666-4843-81a5-5c00810ee3ff"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Consultar Estado de Nota por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/notas/de0ca940-1666-4843-81a5-5c00810ee3ff/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "notas", "de0ca940-1666-4843-81a5-5c00810ee3ff", "estado"]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [{"key": "token", "value": "{{empresa_key}}", "type": "string"}]
+      }
+    },
+    {
+      "name": "5. Tenant - Documents (Legacy Core Fase 3)",
+      "item": [
+        {
+          "name": "1. Emitir Factura Electrónica (Legacy)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "postman-factura-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoComprobante\": \"01\",\n  \"serie\": \"F001\",\n  \"moneda\": \"PEN\",\n  \"clienteTipoDoc\": \"6\",\n  \"clienteNumeroDoc\": \"20555666777\",\n  \"clienteNombre\": \"INVERSIONES Y SERVICIOS PERU S.A.C.\",\n  \"clienteDireccion\": \"Av. Las Camelias 456, San Isidro, Lima\",\n  \"formaPago\": \"CONTADO\",\n  \"items\": [\n    {\n      \"codigoProducto\": \"SERV-001\",\n      \"descripcion\": \"Desarrollo de Software y APIs\",\n      \"cantidad\": 1,\n      \"unidadMedida\": \"ZZ\",\n      \"valorUnitario\": 1000.0,\n      \"tipoAfectacion\": \"10\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/documents",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "documents"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Emitir Boleta con Bolsas ICBPER (Legacy)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "postman-boleta-001", "disabled": true}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoComprobante\": \"03\",\n  \"serie\": \"B001\",\n  \"moneda\": \"PEN\",\n  \"clienteTipoDoc\": \"1\",\n  \"clienteNumeroDoc\": \"76543210\",\n  \"clienteNombre\": \"Juan Pérez\",\n  \"formaPago\": \"CONTADO\",\n  \"items\": [\n    {\n      \"codigoProducto\": \"PROD-10\",\n      \"descripcion\": \"Mouse inalámbrico Logitech\",\n      \"cantidad\": 1,\n      \"unidadMedida\": \"NIU\",\n      \"valorUnitario\": 50.0,\n      \"tipoAfectacion\": \"10\"\n    },\n    {\n      \"codigoProducto\": \"BOLSA-01\",\n      \"descripcion\": \"Bolsa plástica ecológica\",\n      \"cantidad\": 2,\n      \"unidadMedida\": \"NIU\",\n      \"valorUnitario\": 0.1,\n      \"tipoAfectacion\": \"10\",\n      \"cantidadBolsasIcbper\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/documents",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "documents"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Consultar Documento por ID (Legacy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/documents/ce0ca940-1666-4843-81a5-5c00810ee2ee",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "documents", "ce0ca940-1666-4843-81a5-5c00810ee2ee"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Consultar por Clave Idempotencia (Legacy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/documents/idempotency/demo-comp-factura-001",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "documents", "idempotency", "demo-comp-factura-001"]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [{"key": "token", "value": "{{empresa_key}}", "type": "string"}]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "admin_key",
+      "value": "ak_admin_factucorp_master_2026"
+    },
+    {
+      "key": "client_key",
+      "value": "ak_sunat_testing_saas_2026"
+    },
+    {
+      "key": "empresa_key",
+      "value": "ak_test_sunat_20000000001"
+    },
+    {
+      "key": "tenant_id",
+      "value": "20000000001"
+    }
+  ]
+}
