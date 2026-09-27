@@ -1,10 +1,15 @@
 HELP.md
 target/
-.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
+### IDEs y Editores ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
 .apt_generated
 .classpath
 .factorypath
@@ -12,37 +17,44 @@ target/
 .settings
 .springBeans
 .sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-## agentes de IA
-.continue/agents/new-config.yaml
-
-### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+### Herramientas de IA y Asistentes ###
+.antigravitycli/
+.continue/
 
-### variables de entorno
+### Secretos y Variables de Entorno ###
 .env
+.env.*
+!.env.example
+application-local.properties
+application-local.yml
 
-# Storage local de certificados y CPEs
+### Certificados Digitales y Llaves Privadas ###
 storage/
 *.pfx
 *.jks
 *.p12
+*.key
+*.crt
+*.cer
+*.pem
+!src/test/resources/certificates/*.pem
 
-temp_auto_push.bat
-temp_interactive_push.bat
+### Logs y Volcados de JVM ###
+*.log
+logs/
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+### Temporales y Sistema Operativo ###
+.DS_Store
+Thumbs.db
+temp_*.bat
+*.tmp
