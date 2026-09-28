@@ -10,4 +10,5 @@ public interface DocumentoRepositoryPort {
     Optional<ComprobanteFiscal> buscarPorClaveIdempotencia(String claveIdempotencia);
     Optional<ComprobanteFiscal> buscarPorId(UUID id);
     Optional<ComprobanteFiscal> buscarPorEmision(UUID empresaId, String tipoComprobante, String serie, Integer numero);
+    void actualizarHashYEstado(UUID id, String hashCpe, String estadoInterno);
 }

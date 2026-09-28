@@ -17,6 +17,9 @@ import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.servic
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.service.ValidadorReglasFiscales;
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.series.model.Serie;
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.series.repository.SerieRepository;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.company.model.EmpresaConfig;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.company.repository.EmpresaConfigRepository;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.company.service.CertificadoDigitalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException;
@@ -42,9 +45,39 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
     private final SucursalRepository sucursalRepository;
     private final SerieRepository serieRepository;
     private final com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.port.out.CatalogoFiscalPort catalogoFiscalPort;
+    private final ProcesadorComprobanteElectronicoService procesadorComprobanteElectronicoService;
+    private final EmpresaConfigRepository empresaConfigRepository;
+    private final CertificadoDigitalService certificadoDigitalService;
 
     private final CalculadoraFiscalSunat calculadoraFiscalSunat = new CalculadoraFiscalSunat();
     private final ValidadorReglasFiscales validadorReglasFiscales = new ValidadorReglasFiscales();
+
+    private void prevalidarRequisitosFiscales(Empresa empresa, TipoComprobante tipoComprobante) {
+        if (!tipoComprobante.isEsElectronico()) {
+            return;
+        }
+
+        if (empresa.getRuc() == null || empresa.getRuc().isBlank()
+                || empresa.getRazonSocial() == null || empresa.getRazonSocial().isBlank()) {
+            throw new DomainException("Faltan datos de configuración de la empresa");
+        }
+
+        Optional<EmpresaConfig> configOpt = empresaConfigRepository.findByEmpresaId(empresa.getId());
+        if (configOpt.isEmpty()) {
+            throw new DomainException("Faltan datos de configuración de la empresa");
+        }
+        EmpresaConfig config = configOpt.get();
+
+        if (config.getUserSol() == null || config.getUserSol().isBlank()
+                || config.getPassSol() == null || config.getPassSol().isBlank()) {
+            throw new DomainException("Faltan datos de configuración de la empresa");
+        }
+
+        if (config.getCertificado() == null || config.getCertificado().isBlank()
+                || !certificadoDigitalService.existeCertificado(config.getCertificado())) {
+            throw new DomainException("Falta certificado para firmar el comprobante");
+        }
+    }
 
     @Override
     @Transactional
@@ -63,7 +96,14 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
         Empresa empresa = empresaRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No existe ninguna empresa configurada en el esquema actual"));
 
-        // 3. Resolver Serie y Sucursal asociada (la serie determina unívocamente la sucursal)
+        // 3. Validar Serie y Requisitos Fiscales (Fail-Fast)
+        TipoComprobante tipoEnum = TipoComprobante.fromCodigo(command.getTipoComprobante());
+        if (command.getSerie() != null && !command.getSerie().isBlank()) {
+            tipoEnum.validarSerie(command.getSerie().trim());
+        }
+        prevalidarRequisitosFiscales(empresa, tipoEnum);
+
+        // 4. Resolver Serie y Sucursal asociada (la serie determina unívocamente la sucursal)
         Serie serieEntity;
         if (command.getSucursalId() != null) {
             sucursalRepository.findById(command.getSucursalId())
@@ -83,7 +123,10 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
         Sucursal sucursal = serieEntity.getSucursal();
 
         // 5. Mapear líneas de entrada y ejecutar motor de cálculo tributario SUNAT con tasas dinámicas
+        BigDecimal tasaIgv = catalogoFiscalPort.determinarTasaIgvPorSucursal(sucursal);
+        BigDecimal tasaIcbper = catalogoFiscalPort.obtenerTasaIcbperVigente();
         boolean empresaIncluidoTributo = Boolean.TRUE.equals(empresa.getIncluidoTributo());
+
         List<CalculoLineaInput> inputs = new ArrayList<>();
         int itemIndex = 1;
         for (ComprobanteItemCommand itemCmd : command.getItems()) {
@@ -102,10 +145,27 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
             }
 
             // Si solo envió uno de los dos (o si ambos son nulos tras enviar solo precio):
-            // Si la empresa tiene incluido_tributo = false y solo enviaron precioUnitario (o viceversa),
-            // la empresa manda la pauta predeterminada:
             if (valorUnitario == null && precioUnitario == null) {
                 throw new IllegalArgumentException("Debe proporcionar el precio para el ítem: " + itemCmd.getDescripcion());
+            }
+
+            int bolsasIcbper = itemCmd.getCantidadBolsasIcbper() != null ? itemCmd.getCantidadBolsasIcbper() : 0;
+            if (empresaIncluidoTributo && bolsasIcbper > 0) {
+                BigDecimal precioTotal = precioUnitario != null ? precioUnitario : valorUnitario;
+                if (afectacion.isGravaIgv()) {
+                    if (precioTotal.compareTo(tasaIcbper) <= 0) {
+                        BigDecimal precioMostrar = precioTotal.setScale(2, RoundingMode.HALF_UP);
+                        BigDecimal tasaMostrar = tasaIcbper.setScale(2, RoundingMode.HALF_UP);
+                        throw new DomainException(String.format(
+                                "Para bolsas plásticas con tributos incluidos (afectación %s), el precio unitario (S/ %s) debe ser mayor a la tasa ICBPER (S/ %s)",
+                                afectacion.getCodigo(), precioMostrar, tasaMostrar));
+                    }
+                    precioUnitario = precioTotal.subtract(tasaIcbper);
+                    valorUnitario = null;
+                } else if (afectacion.isGratuito()) {
+                    precioUnitario = BigDecimal.ZERO;
+                    valorUnitario = BigDecimal.ZERO;
+                }
             }
 
             inputs.add(new CalculoLineaInput(
@@ -118,14 +178,11 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
                     precioUnitario,
                     afectacion,
                     itemCmd.getDescuento(),
-                    itemCmd.getCantidadBolsasIcbper()
+                    bolsasIcbper
             ));
         }
 
-        BigDecimal tasaIgv = catalogoFiscalPort.determinarTasaIgvPorSucursal(sucursal);
-        BigDecimal tasaIcbper = catalogoFiscalPort.obtenerTasaIcbperVigente();
         CalculadoraFiscalSunat.ConfiguracionTasas configTasas = new CalculadoraFiscalSunat.ConfiguracionTasas(tasaIgv, tasaIcbper);
-
         ResultadoCalculo calculo = calculadoraFiscalSunat.calcular(inputs, command.getDescuentoGlobal(), configTasas);
 
         // 6. Procesar Detracción si aplica
@@ -247,10 +304,17 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
         // 12. Persistir Comprobante Fiscal en esquema del Tenant
         ComprobanteFiscal guardado = documentoRepositoryPort.guardar(comprobante);
 
-        log.info("Comprobante emitido con éxito: {} - {} (ID: {})",
-                guardado.getSerie(), guardado.getNumero(), guardado.getId());
-
-        return guardado;
+        // 13. Fase electrónica (Solo si es CPE, no para tickets internos)
+        if (tipoEnum.isEsElectronico()) {
+            ComprobanteFiscal finalizado = procesadorComprobanteElectronicoService.procesarFirmaYEnvio(guardado, empresa, sucursal);
+            log.info("Comprobante emitido con éxito: {} - {} (ID: {})",
+                    finalizado.getSerie(), finalizado.getNumero(), finalizado.getId());
+            return finalizado;
+        } else {
+            log.info("Ticket interno emitido con éxito (sin firma ni envío SUNAT): {} - {} (ID: {})",
+                    guardado.getSerie(), guardado.getNumero(), guardado.getId());
+            return guardado;
+        }
     }
 
     @Override
@@ -290,8 +354,15 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
             }
         }
 
-        // 3. Resolver Serie y Sucursal (la serie identifica unívocamente la sucursal)
+        // 3. Validar Serie y Requisitos Fiscales (Fail-Fast)
         String tipoComprobante = compReq.getTipo();
+        TipoComprobante tipoEnum = TipoComprobante.fromCodigo(tipoComprobante);
+        if (compReq.getSerie() != null && !compReq.getSerie().isBlank()) {
+            tipoEnum.validarSerie(compReq.getSerie().trim());
+        }
+        prevalidarRequisitosFiscales(empresa, tipoEnum);
+
+        // 4. Resolver Serie y Sucursal (la serie identifica unívocamente la sucursal)
         Serie serieEntity;
         if (compReq.getSerie() != null && !compReq.getSerie().isBlank()) {
             serieEntity = serieRepository.findByTipoComprobanteAndSerie(tipoComprobante, compReq.getSerie().trim())
@@ -307,6 +378,7 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
             serieEntity = serieRepository.findFirstBySucursalIdAndTipoComprobante(sucursalTemp.getId(), tipoComprobante)
                     .orElseThrow(() -> new DomainException(
                             String.format("No existe ninguna serie activa configurada para tipo '%s'", tipoComprobante)));
+            tipoEnum.validarSerie(serieEntity.getSerie());
         }
         Sucursal sucursal = serieEntity.getSucursal();
 
@@ -321,7 +393,10 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
         }
 
         // 5. Mapear líneas de entrada usando regla empresa.incluido_tributo
+        BigDecimal tasaIgv = catalogoFiscalPort.determinarTasaIgvPorSucursal(sucursal);
+        BigDecimal tasaIcbper = catalogoFiscalPort.obtenerTasaIcbperVigente();
         boolean empresaIncluidoTributo = Boolean.TRUE.equals(empresa.getIncluidoTributo());
+
         List<CalculoLineaInput> inputs = new ArrayList<>();
         int itemIndex = 1;
         for (ItemComprobanteRequest itemReq : itemsList) {
@@ -330,15 +405,9 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
             BigDecimal valorUnitario = null;
             BigDecimal precioUnitario = null;
             BigDecimal valor = itemReq.getValor();
-
-            if (empresaIncluidoTributo) {
-                precioUnitario = valor;
-            } else {
-                valorUnitario = valor;
+            if (valor == null) {
+                throw new DomainException("El valor del producto es obligatorio para: " + itemReq.getDescripcion());
             }
-
-            String codProducto = (itemReq.getCodigoProducto() != null && !itemReq.getCodigoProducto().isBlank())
-                    ? itemReq.getCodigoProducto().trim() : "-";
 
             int bolsasIcbper = 0;
             if (itemReq.getCantidadBolsasIcbper() != null && itemReq.getCantidadBolsasIcbper() > 0) {
@@ -346,6 +415,34 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
             } else if (Boolean.TRUE.equals(itemReq.getIcbper()) && itemReq.getCantidad() != null) {
                 bolsasIcbper = itemReq.getCantidad().intValue();
             }
+
+            if (empresaIncluidoTributo) {
+                if (bolsasIcbper > 0) {
+                    if (afectacion.isGravaIgv()) {
+                        if (valor.compareTo(tasaIcbper) <= 0) {
+                            BigDecimal precioMostrar = valor.setScale(2, RoundingMode.HALF_UP);
+                            BigDecimal tasaMostrar = tasaIcbper.setScale(2, RoundingMode.HALF_UP);
+                            throw new DomainException(String.format(
+                                    "Para bolsas plásticas con tributos incluidos (afectación %s), el precio unitario (S/ %s) debe ser mayor a la tasa ICBPER (S/ %s)",
+                                    afectacion.getCodigo(), precioMostrar, tasaMostrar));
+                        }
+                        precioUnitario = valor.subtract(tasaIcbper);
+                        valorUnitario = null;
+                    } else if (afectacion.isGratuito()) {
+                        precioUnitario = BigDecimal.ZERO;
+                        valorUnitario = BigDecimal.ZERO;
+                    } else {
+                        precioUnitario = valor;
+                    }
+                } else {
+                    precioUnitario = valor;
+                }
+            } else {
+                valorUnitario = valor;
+            }
+
+            String codProducto = (itemReq.getCodigoProducto() != null && !itemReq.getCodigoProducto().isBlank())
+                    ? itemReq.getCodigoProducto().trim() : "-";
 
             inputs.add(new CalculoLineaInput(
                     itemIndex++,
@@ -361,8 +458,6 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
             ));
         }
 
-        BigDecimal tasaIgv = catalogoFiscalPort.determinarTasaIgvPorSucursal(sucursal);
-        BigDecimal tasaIcbper = catalogoFiscalPort.obtenerTasaIcbperVigente();
         CalculadoraFiscalSunat.ConfiguracionTasas configTasas = new CalculadoraFiscalSunat.ConfiguracionTasas(tasaIgv, tasaIcbper);
 
         ResultadoCalculo calculo = calculadoraFiscalSunat.calcular(inputs, request.getDescuentoGlobal(), configTasas);
@@ -451,7 +546,7 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
                 .subtotal(calculo.totalValorVenta())
                 .total(calculo.importeTotal())
                 .totalDescuentos(calculo.totalDescuentos())
-                .estadoInterno("GENERADO")
+                .estadoInterno("REGISTRADO")
                 .detalles(calculo.lineas())
                 .totalesAfectacion(calculo.totalesAfectacion())
                 .tributosGlobales(calculo.tributosGlobales())
@@ -463,9 +558,17 @@ public class EmitirComprobanteService implements EmitirComprobanteUseCase, Consu
         validadorReglasFiscales.validar(comprobante);
 
         ComprobanteFiscal guardado = documentoRepositoryPort.guardar(comprobante);
-        log.info("Comprobante emitido con formato OpenAPI: {} - {} (ID: {})",
-                guardado.getSerie(), guardado.getNumero(), guardado.getId());
 
-        return guardado;
+        // Fase electrónica: Generación UBL 2.1, Firma XMLDSig, Almacenamiento y Envío SUNAT (Solo CPE)
+        if (tipoEnum.isEsElectronico()) {
+            ComprobanteFiscal finalizado = procesadorComprobanteElectronicoService.procesarFirmaYEnvio(guardado, empresa, sucursal);
+            log.info("Comprobante emitido con formato OpenAPI: {} - {} (ID: {})",
+                    finalizado.getSerie(), finalizado.getNumero(), finalizado.getId());
+            return finalizado;
+        } else {
+            log.info("Ticket interno emitido con formato OpenAPI (sin firma ni envío SUNAT): {} - {} (ID: {})",
+                    guardado.getSerie(), guardado.getNumero(), guardado.getId());
+            return guardado;
+        }
     }
 }

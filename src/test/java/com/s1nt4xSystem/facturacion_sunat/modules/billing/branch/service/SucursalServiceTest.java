@@ -38,6 +38,9 @@ class SucursalServiceTest {
     @Mock
     private CatalogoUbigeoRepository catalogoUbigeoRepository;
 
+    @Mock
+    private com.s1nt4xSystem.facturacion_sunat.modules.billing.series.repository.SerieRepository serieRepository;
+
     @InjectMocks
     private SucursalServiceImpl sucursalService;
 
@@ -50,6 +53,9 @@ class SucursalServiceTest {
                 .ruc("20100070970")
                 .razonSocial("Supermercado Central S.A.C.")
                 .build();
+        lenient().when(serieRepository.save(any(com.s1nt4xSystem.facturacion_sunat.modules.billing.series.model.Serie.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(serieRepository.findAll()).thenReturn(new java.util.ArrayList<>());
     }
 
     @Test

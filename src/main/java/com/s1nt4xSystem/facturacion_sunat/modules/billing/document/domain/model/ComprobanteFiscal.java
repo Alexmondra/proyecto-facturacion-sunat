@@ -54,6 +54,13 @@ public class ComprobanteFiscal {
     private final String hashCpe;
     private final String payloadEntrada;
 
+    // Auditoría y Respuesta SUNAT
+    private final String estadoSunat;
+    private final String codigoSunat;
+    private final String mensajeSunat;
+    private final String xmlUrl;
+    private final String cdrUrl;
+
     // Relaciones hijas
     @Builder.Default
     private final List<LineaComprobante> detalles = new ArrayList<>();

@@ -17,6 +17,9 @@ import com.s1nt4xSystem.facturacion_sunat.modules.billing.series.model.Serie;
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.series.repository.SerieRepository;
 import com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException;
 import com.s1nt4xSystem.facturacion_sunat.shared.exception.ResourceNotFoundException;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.company.model.EmpresaConfig;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.company.repository.EmpresaConfigRepository;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.company.service.CertificadoDigitalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,8 +43,38 @@ public class EmitirNotaService implements EmitirNotaUseCase {
     private final SucursalRepository sucursalRepository;
     private final SerieRepository serieRepository;
     private final CatalogoFiscalPort catalogoFiscalPort;
+    private final ProcesadorComprobanteElectronicoService procesadorComprobanteElectronicoService;
+    private final EmpresaConfigRepository empresaConfigRepository;
+    private final CertificadoDigitalService certificadoDigitalService;
 
     private final CalculadoraFiscalSunat calculadoraFiscalSunat = new CalculadoraFiscalSunat();
+
+    private void prevalidarRequisitosFiscales(Empresa empresa, TipoComprobante tipoComprobante) {
+        if (!tipoComprobante.isEsElectronico()) {
+            return;
+        }
+
+        if (empresa.getRuc() == null || empresa.getRuc().isBlank()
+                || empresa.getRazonSocial() == null || empresa.getRazonSocial().isBlank()) {
+            throw new DomainException("Faltan datos de configuración de la empresa");
+        }
+
+        Optional<EmpresaConfig> configOpt = empresaConfigRepository.findByEmpresaId(empresa.getId());
+        if (configOpt.isEmpty()) {
+            throw new DomainException("Faltan datos de configuración de la empresa");
+        }
+        EmpresaConfig config = configOpt.get();
+
+        if (config.getUserSol() == null || config.getUserSol().isBlank()
+                || config.getPassSol() == null || config.getPassSol().isBlank()) {
+            throw new DomainException("Faltan datos de configuración de la empresa");
+        }
+
+        if (config.getCertificado() == null || config.getCertificado().isBlank()
+                || !certificadoDigitalService.existeCertificado(config.getCertificado())) {
+            throw new DomainException("Falta certificado para firmar el comprobante");
+        }
+    }
 
     @Override
     @Transactional
@@ -75,6 +108,11 @@ public class EmitirNotaService implements EmitirNotaUseCase {
         if (!"07".equals(tipoNota) && !"08".equals(tipoNota)) {
             throw new DomainException("El tipo de nota debe ser 07 (Nota de Crédito) u 08 (Nota de Débito)");
         }
+        TipoComprobante tipoEnum = TipoComprobante.fromCodigo(tipoNota);
+        if (notaReq.getSerie() != null && !notaReq.getSerie().isBlank()) {
+            tipoEnum.validarSerie(notaReq.getSerie().trim());
+        }
+        prevalidarRequisitosFiscales(empresa, tipoEnum);
 
         // 4. Resolver Serie y Sucursal
         Serie serieEntity;
@@ -92,6 +130,7 @@ public class EmitirNotaService implements EmitirNotaUseCase {
             serieEntity = serieRepository.findFirstBySucursalIdAndTipoComprobante(sucursalTemp.getId(), tipoNota)
                     .orElseThrow(() -> new DomainException(
                             String.format("No existe ninguna serie activa configurada para el tipo de nota '%s'", tipoNota)));
+            tipoEnum.validarSerie(serieEntity.getSerie());
         }
         Sucursal sucursal = serieEntity.getSucursal();
 
@@ -271,9 +310,13 @@ public class EmitirNotaService implements EmitirNotaUseCase {
                 .build();
 
         ComprobanteFiscal guardado = documentoRepositoryPort.guardar(notaFiscal);
-        log.info("Nota electrónica emitida exitosamente: {} - {} (ID: {})",
-                guardado.getSerie(), guardado.getNumero(), guardado.getId());
 
-        return guardado;
+        // Fase electrónica: Generación UBL 2.1, Firma XMLDSig, Almacenamiento y Envío SUNAT
+        ComprobanteFiscal finalizado = procesadorComprobanteElectronicoService.procesarFirmaYEnvio(guardado, empresa, sucursal);
+
+        log.info("Nota electrónica emitida exitosamente: {} - {} (ID: {})",
+                finalizado.getSerie(), finalizado.getNumero(), finalizado.getId());
+
+        return finalizado;
     }
 }

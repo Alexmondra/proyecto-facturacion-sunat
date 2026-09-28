@@ -79,6 +79,7 @@ public class CalculadoraFiscalSunat {
 
         BigDecimal sumaIgvGlobal = BigDecimal.ZERO.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
         BigDecimal sumaIcbperGlobal = BigDecimal.ZERO.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
+        int sumaBolsasGlobal = 0;
         BigDecimal sumaSubtotalGlobal = BigDecimal.ZERO.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
         BigDecimal sumaDescuentos = (descuentoGlobal != null ? descuentoGlobal : BigDecimal.ZERO).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
 
@@ -99,6 +100,9 @@ public class CalculadoraFiscalSunat {
                 sumaIgvGlobal = sumaIgvGlobal.add(igvLinea);
             }
             sumaIcbperGlobal = sumaIcbperGlobal.add(icbperLinea);
+            if (input.cantidadBolsasIcbper() != null && input.cantidadBolsasIcbper() > 0) {
+                sumaBolsasGlobal += input.cantidadBolsasIcbper();
+            }
 
             if (input.descuento() != null && input.descuento().compareTo(BigDecimal.ZERO) > 0) {
                 sumaDescuentos = sumaDescuentos.add(input.descuento());
@@ -152,6 +156,7 @@ public class CalculadoraFiscalSunat {
                     .tipoTributo("OTH")
                     .baseImponible(BigDecimal.ZERO.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
                     .porcentaje(BigDecimal.ZERO.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
+                    .cantidadBase(BigDecimal.valueOf(sumaBolsasGlobal))
                     .monto(sumaIcbperGlobal.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP))
                     .build());
         }
@@ -265,9 +270,9 @@ public class CalculadoraFiscalSunat {
         BigDecimal totalTributosLinea = montoIgv.add(montoIcbper).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
         BigDecimal subtotalLinea = baseImponible.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
 
-        // En transferencias gratuitas, el total a cobrar de la línea es 0
+        // En transferencias gratuitas, el total a cobrar de la línea es 0 (o el ICBPER si grava bolsas)
         BigDecimal totalLinea = afectacion.isGratuito()
-                ? BigDecimal.ZERO.setScale(ESCALA_MONEDA, RoundingMode.HALF_UP)
+                ? montoIcbper
                 : subtotalLinea.add(totalTributosLinea).setScale(ESCALA_MONEDA, RoundingMode.HALF_UP);
 
         LineaComprobante linea = LineaComprobante.builder()

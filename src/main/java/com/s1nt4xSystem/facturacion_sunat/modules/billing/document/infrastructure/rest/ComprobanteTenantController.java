@@ -55,6 +55,16 @@ public class ComprobanteTenantController {
         return ResponseEntity.ok(ApiResponse.ok(response, "Comprobante encontrado"));
     }
 
+    @GetMapping("/idempotency/{clave}")
+    public ResponseEntity<ApiResponse<ComprobanteResponse>> obtenerPorClaveIdempotencia(@PathVariable String clave) {
+        ComprobanteFiscal doc = consultarComprobanteUseCase.consultarPorClaveIdempotencia(clave)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró ningún comprobante con clave de idempotencia: " + clave));
+
+        String rucEmisor = resolverRucEmpresa();
+        ComprobanteResponse response = ComprobanteRestMapper.toComprobanteResponse(doc, rucEmisor);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Comprobante encontrado"));
+    }
+
     @GetMapping("/{id}/estado")
     public ResponseEntity<ApiResponse<EstadoComprobanteResponse>> obtenerEstado(@PathVariable UUID id) {
         ComprobanteFiscal doc = consultarComprobanteUseCase.consultarPorId(id)
@@ -63,8 +73,8 @@ public class ComprobanteTenantController {
         EstadoComprobanteResponse estado = EstadoComprobanteResponse.builder()
                 .id(doc.getId())
                 .estado(doc.getEstadoInterno())
-                .estadoSunat(null)
-                .mensaje("Comprobante " + doc.getEstadoInterno().toLowerCase())
+                .estadoSunat(doc.getEstadoSunat() != null ? doc.getEstadoSunat() : doc.getEstadoInterno())
+                .mensaje(doc.getMensajeSunat() != null ? doc.getMensajeSunat() : ("Comprobante " + doc.getEstadoInterno().toLowerCase()))
                 .createdAt(doc.getFechaEmision())
                 .updatedAt(doc.getFechaEmision())
                 .build();

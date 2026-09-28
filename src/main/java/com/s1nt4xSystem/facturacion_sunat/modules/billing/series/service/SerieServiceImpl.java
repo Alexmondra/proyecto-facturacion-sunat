@@ -47,16 +47,10 @@ public class SerieServiceImpl implements SerieService {
         String serieCode = request.getSerie().trim().toUpperCase();
         String tipoDoc = request.getTipoComprobante().trim();
 
-        // Validaciones de reglas SUNAT
-        if ("01".equals(tipoDoc) && !serieCode.startsWith("F")) {
-            throw new DomainException("Las series para Facturas (01) deben comenzar con 'F' (ej. F001)");
-        }
-        if ("03".equals(tipoDoc) && !serieCode.startsWith("B")) {
-            throw new DomainException("Las series para Boletas (03) deben comenzar con 'B' (ej. B001)");
-        }
-        if ("09".equals(tipoDoc) && !serieCode.startsWith("T") && !serieCode.startsWith("E")) {
-            throw new DomainException("Las series para Guías de Remisión (09) deben comenzar con 'T' o 'E' (ej. T001)");
-        }
+        // Validaciones de reglas oficiales de SUNAT según TipoComprobante
+        com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.model.TipoComprobante tipoEnum = 
+                com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.model.TipoComprobante.fromCodigo(tipoDoc);
+        tipoEnum.validarSerie(serieCode);
 
         if (serieRepository.existsByTipoComprobanteAndSerie(tipoDoc, serieCode)) {
             throw new DomainException(String.format("La serie '%s' para el tipo '%s' ya está registrada en la empresa (las series no pueden repetirse entre sucursales)", serieCode, tipoDoc));
@@ -143,15 +137,9 @@ public class SerieServiceImpl implements SerieService {
         }
 
         if (serieChanged || tipoChanged) {
-            if ("01".equals(newTipoDoc) && !newSerieCode.startsWith("F")) {
-                throw new DomainException("Las series para Facturas (01) deben comenzar con 'F' (ej. F001)");
-            }
-            if ("03".equals(newTipoDoc) && !newSerieCode.startsWith("B")) {
-                throw new DomainException("Las series para Boletas (03) deben comenzar con 'B' (ej. B001)");
-            }
-            if ("09".equals(newTipoDoc) && !newSerieCode.startsWith("T") && !newSerieCode.startsWith("E")) {
-                throw new DomainException("Las series para Guías de Remisión (09) deben comenzar con 'T' o 'E' (ej. T001)");
-            }
+            com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.model.TipoComprobante tipoEnum = 
+                    com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.model.TipoComprobante.fromCodigo(newTipoDoc);
+            tipoEnum.validarSerie(newSerieCode);
 
             Optional<Serie> serieExistente = serieRepository.findByTipoComprobanteAndSerie(newTipoDoc, newSerieCode);
             if (serieExistente.isPresent() && !serieExistente.get().getId().equals(serie.getId())) {

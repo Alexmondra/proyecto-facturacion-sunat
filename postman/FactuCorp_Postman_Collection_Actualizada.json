@@ -759,6 +759,19 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "7. Consultar Comprobante por Clave Idempotencia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenant/comprobantes/idempotency/demo-comp-boleta-001",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tenant", "comprobantes", "idempotency", "demo-comp-boleta-001"]
+            }
+          },
+          "response": []
         }
       ],
       "auth": {
@@ -831,81 +844,6 @@
               "raw": "{{base_url}}/api/v1/tenant/notas/de0ca940-1666-4843-81a5-5c00810ee3ff/estado",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "tenant", "notas", "de0ca940-1666-4843-81a5-5c00810ee3ff", "estado"]
-            }
-          },
-          "response": []
-        }
-      ],
-      "auth": {
-        "type": "bearer",
-        "bearer": [{"key": "token", "value": "{{empresa_key}}", "type": "string"}]
-      }
-    },
-    {
-      "name": "5. Tenant - Documents (Legacy Core Fase 3)",
-      "item": [
-        {
-          "name": "1. Emitir Factura Electrónica (Legacy)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {"key": "Content-Type", "value": "application/json"},
-              {"key": "Idempotency-Key", "value": "postman-factura-001", "disabled": true}
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipoComprobante\": \"01\",\n  \"serie\": \"F001\",\n  \"moneda\": \"PEN\",\n  \"clienteTipoDoc\": \"6\",\n  \"clienteNumeroDoc\": \"20555666777\",\n  \"clienteNombre\": \"INVERSIONES Y SERVICIOS PERU S.A.C.\",\n  \"clienteDireccion\": \"Av. Las Camelias 456, San Isidro, Lima\",\n  \"formaPago\": \"CONTADO\",\n  \"items\": [\n    {\n      \"codigoProducto\": \"SERV-001\",\n      \"descripcion\": \"Desarrollo de Software y APIs\",\n      \"cantidad\": 1,\n      \"unidadMedida\": \"ZZ\",\n      \"valorUnitario\": 1000.0,\n      \"tipoAfectacion\": \"10\"\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/tenant/documents",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "tenant", "documents"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "2. Emitir Boleta con Bolsas ICBPER (Legacy)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {"key": "Content-Type", "value": "application/json"},
-              {"key": "Idempotency-Key", "value": "postman-boleta-001", "disabled": true}
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipoComprobante\": \"03\",\n  \"serie\": \"B001\",\n  \"moneda\": \"PEN\",\n  \"clienteTipoDoc\": \"1\",\n  \"clienteNumeroDoc\": \"76543210\",\n  \"clienteNombre\": \"Juan Pérez\",\n  \"formaPago\": \"CONTADO\",\n  \"items\": [\n    {\n      \"codigoProducto\": \"PROD-10\",\n      \"descripcion\": \"Mouse inalámbrico Logitech\",\n      \"cantidad\": 1,\n      \"unidadMedida\": \"NIU\",\n      \"valorUnitario\": 50.0,\n      \"tipoAfectacion\": \"10\"\n    },\n    {\n      \"codigoProducto\": \"BOLSA-01\",\n      \"descripcion\": \"Bolsa plástica ecológica\",\n      \"cantidad\": 2,\n      \"unidadMedida\": \"NIU\",\n      \"valorUnitario\": 0.1,\n      \"tipoAfectacion\": \"10\",\n      \"cantidadBolsasIcbper\": 2\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/tenant/documents",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "tenant", "documents"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "3. Consultar Documento por ID (Legacy)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/v1/tenant/documents/ce0ca940-1666-4843-81a5-5c00810ee2ee",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "tenant", "documents", "ce0ca940-1666-4843-81a5-5c00810ee2ee"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "4. Consultar por Clave Idempotencia (Legacy)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/v1/tenant/documents/idempotency/demo-comp-factura-001",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "tenant", "documents", "idempotency", "demo-comp-factura-001"]
             }
           },
           "response": []

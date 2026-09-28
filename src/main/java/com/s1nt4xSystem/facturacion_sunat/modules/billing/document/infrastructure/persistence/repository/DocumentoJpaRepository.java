@@ -21,4 +21,12 @@ public interface DocumentoJpaRepository extends JpaRepository<DocumentoEntity, U
             @Param("serie") String serie,
             @Param("numero") Integer numero
     );
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE DocumentoEntity d SET d.hashCpe = :hashCpe, d.estadoInterno = :estadoInterno WHERE d.id = :id")
+    void actualizarHashYEstado(
+            @Param("id") UUID id,
+            @Param("hashCpe") String hashCpe,
+            @Param("estadoInterno") String estadoInterno
+    );
 }

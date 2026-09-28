@@ -11,10 +11,14 @@ import com.s1nt4xSystem.facturacion_sunat.platform.catalog.model.CatalogoUbigeo;
 import com.s1nt4xSystem.facturacion_sunat.platform.catalog.repository.CatalogoUbigeoRepository;
 import com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException;
 import com.s1nt4xSystem.facturacion_sunat.shared.exception.ResourceNotFoundException;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.model.TipoComprobante;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.series.model.Serie;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.series.repository.SerieRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -30,14 +34,17 @@ public class SucursalServiceImpl implements SucursalService {
     private final SucursalRepository sucursalRepository;
     private final EmpresaTenantService empresaTenantService;
     private final CatalogoUbigeoRepository catalogoUbigeoRepository;
+    private final SerieRepository serieRepository;
 
     public SucursalServiceImpl(
             SucursalRepository sucursalRepository,
             EmpresaTenantService empresaTenantService,
-            CatalogoUbigeoRepository catalogoUbigeoRepository) {
+            CatalogoUbigeoRepository catalogoUbigeoRepository,
+            SerieRepository serieRepository) {
         this.sucursalRepository = sucursalRepository;
         this.empresaTenantService = empresaTenantService;
         this.catalogoUbigeoRepository = catalogoUbigeoRepository;
+        this.serieRepository = serieRepository;
     }
 
     @Override
@@ -66,7 +73,77 @@ public class SucursalServiceImpl implements SucursalService {
                 .build();
 
         Sucursal saved = sucursalRepository.save(sucursal);
+
+        // Auto-crear series correlativas para la nueva sucursal (siguiente a las existentes)
+        autogenerarSeriesParaNuevaSucursal(saved);
+
         return SucursalResponse.fromEntity(saved, ubigeoValido);
+    }
+
+    private void autogenerarSeriesParaNuevaSucursal(Sucursal sucursal) {
+        List<Serie> seriesExistentes = new ArrayList<>(serieRepository.findAll());
+        List<String> tiposBase = List.of(
+                TipoComprobante.FACTURA.getCodigo(),
+                TipoComprobante.BOLETA.getCodigo(),
+                TipoComprobante.NOTA_CREDITO.getCodigo(),
+                TipoComprobante.NOTA_DEBITO.getCodigo(),
+                TipoComprobante.TICKET_INTERNO.getCodigo()
+        );
+
+        for (String tipoDoc : tiposBase) {
+            String siguienteSerie = calcularSiguienteSerie(tipoDoc, seriesExistentes);
+            Serie nuevaSerie = Serie.builder()
+                    .sucursal(sucursal)
+                    .tipoComprobante(tipoDoc)
+                    .serie(siguienteSerie)
+                    .correlativo(0)
+                    .build();
+            Serie guardada = serieRepository.save(nuevaSerie);
+            seriesExistentes.add(guardada != null ? guardada : nuevaSerie);
+        }
+    }
+
+    private String calcularSiguienteSerie(String tipoDoc, List<Serie> existentes) {
+        List<Serie> delTipo = existentes.stream()
+                .filter(s -> s != null && tipoDoc.equals(s.getTipoComprobante()))
+                .toList();
+
+        TipoComprobante tipoEnum = TipoComprobante.fromCodigo(tipoDoc);
+        String prefijoDefault = tipoEnum.getPrefijoSerieDefault();
+
+        if (delTipo.isEmpty()) {
+            int digitos = 4 - prefijoDefault.length();
+            return prefijoDefault + String.format("%0" + digitos + "d", 1);
+        }
+
+        int maxNumero = 0;
+        String mejorPrefijo = prefijoDefault;
+        int digitos = 4 - prefijoDefault.length();
+
+        for (Serie s : delTipo) {
+            String codigoSerie = s.getSerie().trim().toUpperCase();
+            int splitIdx = 0;
+            while (splitIdx < codigoSerie.length() && Character.isLetter(codigoSerie.charAt(splitIdx))) {
+                splitIdx++;
+            }
+            if (splitIdx > 0 && splitIdx < codigoSerie.length()) {
+                String pref = codigoSerie.substring(0, splitIdx);
+                String numStr = codigoSerie.substring(splitIdx);
+                try {
+                    int num = Integer.parseInt(numStr);
+                    if (num > maxNumero) {
+                        maxNumero = num;
+                        mejorPrefijo = pref;
+                        digitos = numStr.length();
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        int siguienteNumero = maxNumero + 1;
+        String candidata = mejorPrefijo + String.format("%0" + digitos + "d", siguienteNumero);
+        tipoEnum.validarSerie(candidata);
+        return candidata;
     }
 
     @Override

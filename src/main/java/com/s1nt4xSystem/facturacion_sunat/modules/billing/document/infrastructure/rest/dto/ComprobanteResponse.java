@@ -27,6 +27,24 @@ public class ComprobanteResponse {
     private TotalesResponse totales;
     private String estado;
 
+    @JsonProperty("estado_sunat")
+    private String estadoSunat;
+
+    @JsonProperty("codigo_sunat")
+    private String codigoSunat;
+
+    @JsonProperty("mensaje_sunat")
+    private String mensajeSunat;
+
+    @JsonProperty("xml_url")
+    private String xmlUrl;
+
+    @JsonProperty("cdr_url")
+    private String cdrUrl;
+
+    @JsonProperty("hash_cpe")
+    private String hashCpe;
+
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
 

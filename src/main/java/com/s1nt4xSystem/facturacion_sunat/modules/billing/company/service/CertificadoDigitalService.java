@@ -42,4 +42,12 @@ public interface CertificadoDigitalService {
      * @return KeyStore inicializado
      */
     KeyStore cargarKeyStore(String rutaRelativa, String password);
+
+    /**
+     * Comprueba si el archivo físico del certificado existe en el storage.
+     *
+     * @param rutaRelativa Ruta relativa guardada en empresa_config
+     * @return true si el archivo existe físicamente y no está vacío
+     */
+    boolean existeCertificado(String rutaRelativa);
 }

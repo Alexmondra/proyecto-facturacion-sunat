@@ -36,6 +36,24 @@ public class NotaResponse {
     @JsonProperty("estado_interno")
     private String estadoInterno;
 
+    @JsonProperty("estado_sunat")
+    private String estadoSunat;
+
+    @JsonProperty("codigo_sunat")
+    private String codigoSunat;
+
+    @JsonProperty("mensaje_sunat")
+    private String mensajeSunat;
+
+    @JsonProperty("xml_url")
+    private String xmlUrl;
+
+    @JsonProperty("cdr_url")
+    private String cdrUrl;
+
+    @JsonProperty("hash_cpe")
+    private String hashCpe;
+
     @JsonProperty("documento_referencia")
     private DocumentoReferenciaResponse documentoReferencia;
 

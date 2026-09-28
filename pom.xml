@@ -76,6 +76,13 @@
 			<version>1.80</version>
 		</dependency>
 
+		<!-- FreeMarker (UBL 2.1 XML Templates) -->
+		<dependency>
+			<groupId>org.freemarker</groupId>
+			<artifactId>freemarker</artifactId>
+			<version>2.3.33</version>
+		</dependency>
+
 		<!-- Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

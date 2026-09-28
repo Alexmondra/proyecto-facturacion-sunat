@@ -50,6 +50,15 @@ class EmitirNotaServiceTest {
     @Mock
     private CatalogoFiscalPort catalogoFiscalPort;
 
+    @Mock
+    private ProcesadorComprobanteElectronicoService procesadorComprobanteElectronicoService;
+
+    @Mock
+    private com.s1nt4xSystem.facturacion_sunat.modules.billing.company.repository.EmpresaConfigRepository empresaConfigRepository;
+
+    @Mock
+    private com.s1nt4xSystem.facturacion_sunat.modules.billing.company.service.CertificadoDigitalService certificadoDigitalService;
+
     @InjectMocks
     private EmitirNotaService emitirNotaService;
 
@@ -60,6 +69,18 @@ class EmitirNotaServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(procesadorComprobanteElectronicoService.procesarFirmaYEnvio(any(), any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.s1nt4xSystem.facturacion_sunat.modules.billing.company.model.EmpresaConfig config = 
+                com.s1nt4xSystem.facturacion_sunat.modules.billing.company.model.EmpresaConfig.builder()
+                        .userSol("MODDATOS")
+                        .passSol("moddatos")
+                        .certificado("certificates/test.pfx")
+                        .build();
+        lenient().when(empresaConfigRepository.findByEmpresaId(any())).thenReturn(Optional.of(config));
+        lenient().when(certificadoDigitalService.existeCertificado(any())).thenReturn(true);
+
         empresa = Empresa.builder()
                 .id(UUID.randomUUID())
                 .ruc("20123456789")

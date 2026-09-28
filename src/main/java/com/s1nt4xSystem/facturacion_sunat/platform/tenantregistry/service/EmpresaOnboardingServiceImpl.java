@@ -95,8 +95,8 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
         // 6. Sembrar el registro inicial de la empresa dentro de su propio esquema tenant
         try {
             String insertEmpresaSql = String.format(
-                    "INSERT INTO %s.empresas (ruc, razon_social, direccion_fiscal, logo) " +
-                    "VALUES (?, ?, ?, ?) ON CONFLICT (ruc) DO NOTHING",
+                    "INSERT INTO %s.empresas (ruc, razon_social, direccion_fiscal, logo, entorno) " +
+                    "VALUES (?, ?, ?, ?, 'BETA') ON CONFLICT (ruc) DO NOTHING",
                     schemaName
             );
             jdbcTemplate.update(
@@ -106,12 +106,12 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
                     request.getDireccionFiscal(),
                     request.getLogo()
             );
-            log.info("Empresa sembrada exitosamente en esquema {}.empresas", schemaName);
+            log.info("Empresa sembrada exitosamente en esquema {}.empresas con entorno BETA", schemaName);
 
-            // 6.1. Sembrar configuración inicial si no existe
+            // 6.1. Sembrar configuración inicial mínima con valores por defecto (sin credenciales inventadas)
             String insertConfigSql = String.format(
-                    "INSERT INTO %s.empresa_config (id, empresa_id, envio_asincrono, modo_emision, user_sol, pass_sol, numero_cuenta_detraccion, tipo_certificado, certificado, certificado_pass) " +
-                    "SELECT uuidv7(), e.id, true, 'PROPIO', 'MODDATOS', 'moddatos', '00-000-000000', 'PFX', 'tenants/' || e.ruc || '/certificates/certificate.pfx', '12345678' " +
+                    "INSERT INTO %s.empresa_config (id, empresa_id, envio_asincrono, modo_emision) " +
+                    "SELECT uuidv7(), e.id, true, 'PROPIO' " +
                     "FROM %s.empresas e WHERE NOT EXISTS (SELECT 1 FROM %s.empresa_config WHERE empresa_id = e.id)",
                     schemaName, schemaName, schemaName
             );
@@ -126,16 +126,25 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
             );
             jdbcTemplate.update(insertSucursalSql);
 
-            // 6.3. Sembrar Series oficiales típicas para la Sucursal Principal (F001, B001, FC01, BC01, FD01, BD01, T001)
+            // 6.3. Sembrar Series oficiales completas para la Sucursal Principal (01, 03, 07, 08, 09, 00)
             String insertSeriesSql = String.format(
                     "INSERT INTO %s.series (id, sucursal_id, tipo_comprobante, serie, correlativo) " +
                     "SELECT uuidv7(), s.id, v.tipo, v.serie, 0 FROM %s.sucursales s " +
-                    "CROSS JOIN (VALUES ('01', 'F001'), ('03', 'B001'), ('07', 'FC01'), ('07', 'BC01'), ('08', 'FD01'), ('08', 'BD01'), ('09', 'T001')) AS v(tipo, serie) " +
+                    "CROSS JOIN (VALUES " +
+                    "   ('01', 'F001'), " +
+                    "   ('03', 'B001'), " +
+                    "   ('07', 'FC01'), " +
+                    "   ('07', 'BC01'), " +
+                    "   ('08', 'FD01'), " +
+                    "   ('08', 'BD01'), " +
+                    "   ('09', 'T001'), " +
+                    "   ('00', 'NV01') " +
+                    ") AS v(tipo, serie) " +
                     "WHERE s.codigo = '0000' AND NOT EXISTS (SELECT 1 FROM %s.series s2 WHERE s2.sucursal_id = s.id AND s2.tipo_comprobante = v.tipo AND s2.serie = v.serie)",
                     schemaName, schemaName, schemaName
             );
             jdbcTemplate.update(insertSeriesSql);
-            log.info("Sucursal principal '0000' y series iniciales sembradas para esquema {}", schemaName);
+            log.info("Sucursal principal '0000' y series iniciales (incluyendo NV01) sembradas para esquema {}", schemaName);
 
         } catch (Exception e) {
             log.error("Error al sembrar la empresa en el esquema {}: {}", schemaName, e.getMessage(), e);

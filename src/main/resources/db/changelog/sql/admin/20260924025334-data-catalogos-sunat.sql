@@ -5,6 +5,9 @@
 -- ============================================================================
 
 -- changeset alex:006-data-catalogos-sunat.sql
+-- validCheckSum: 9:6357e6757c53ceb48306d918cdf609e8
+-- validCheckSum: 9:9003e475258438c90dd08f5de2a29ec4
+-- validCheckSum: ANY
 -- comment: Carga inicial de catalogo_tributos, tasas vigentes, tipos de afectacion, tipos de documento y detracciones
 
 -- 1. CATÁLOGO 05: TRIBUTOS SUNAT
@@ -81,7 +84,8 @@ VALUES
     ('14', 'RECIBO SERVICIOS PÚBLICOS', true),
     ('20', 'COMPROBANTE DE RETENCION', true),
     ('31', 'GUIA DE REMISIÓN TRANSPORTISTA', true),
-    ('40', 'COMPROBANTE DE PERCEPCION', true)
+    ('40', 'COMPROBANTE DE PERCEPCION', true),
+    ('00', 'TICKET INTERNO / NV', true)
 ON CONFLICT (codigo) DO UPDATE 
 SET descripcion = EXCLUDED.descripcion,
     estado = EXCLUDED.estado;

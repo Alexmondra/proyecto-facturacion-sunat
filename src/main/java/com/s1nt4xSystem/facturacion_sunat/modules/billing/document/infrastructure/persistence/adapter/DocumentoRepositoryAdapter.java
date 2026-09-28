@@ -5,10 +5,14 @@ import com.s1nt4xSystem.facturacion_sunat.modules.billing.branch.repository.Sucu
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.model.*;
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.domain.port.out.DocumentoRepositoryPort;
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.infrastructure.persistence.entity.*;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.infrastructure.persistence.repository.DocumentoArchivoJpaRepository;
 import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.infrastructure.persistence.repository.DocumentoJpaRepository;
+import com.s1nt4xSystem.facturacion_sunat.modules.billing.document.infrastructure.persistence.repository.DocumentoSunatJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -20,11 +24,13 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
 
     private final DocumentoJpaRepository jpaRepository;
     private final SucursalRepository sucursalRepository;
+    private final DocumentoSunatJpaRepository sunatJpaRepository;
+    private final DocumentoArchivoJpaRepository archivoJpaRepository;
 
     @Override
     public ComprobanteFiscal guardar(ComprobanteFiscal domain) {
         DocumentoEntity entity = toEntity(domain);
-        DocumentoEntity saved = jpaRepository.save(entity);
+        DocumentoEntity saved = jpaRepository.saveAndFlush(entity);
         return toDomain(saved);
     }
 
@@ -44,6 +50,11 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
     public Optional<ComprobanteFiscal> buscarPorEmision(UUID empresaId, String tipoComprobante, String serie, Integer numero) {
         return jpaRepository.findByEmision(empresaId, tipoComprobante, serie, numero)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public void actualizarHashYEstado(UUID id, String hashCpe, String estadoInterno) {
+        jpaRepository.actualizarHashYEstado(id, hashCpe, estadoInterno);
     }
 
     private DocumentoEntity toEntity(ComprobanteFiscal d) {
@@ -93,11 +104,21 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
 
                 if (l.getTributos() != null) {
                     for (TributoLinea tl : l.getTributos()) {
+                        Long tributoId = tl.getTributoId();
+                        if (tributoId == null) {
+                            if ("7152".equals(tl.getCodigoTributo()) || "ICBPER".equalsIgnoreCase(tl.getNombreTributo())) {
+                                tributoId = 3L;
+                            } else if ("2000".equals(tl.getCodigoTributo()) || "ISC".equalsIgnoreCase(tl.getNombreTributo())) {
+                                tributoId = 2L;
+                            } else {
+                                tributoId = 1L;
+                            }
+                        }
                         DocumentoDetalleTributoEntity dte = DocumentoDetalleTributoEntity.builder()
                                 .detalle(det)
-                                .tributoId(tl.getTributoId() != null ? tl.getTributoId() : 1L)
+                                .tributoId(tributoId)
                                 .baseImponible(tl.getBaseImponible())
-                                .porcentaje(tl.getPorcentaje())
+                                .porcentaje(tl.getPorcentaje() != null ? tl.getPorcentaje() : BigDecimal.ZERO)
                                 .cantidadBase(tl.getCantidadBase())
                                 .monto(tl.getMonto())
                                 .build();
@@ -111,9 +132,19 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
         // Mapear tributos globales
         if (d.getTributosGlobales() != null) {
             for (TributoLinea tg : d.getTributosGlobales()) {
+                Long tributoId = tg.getTributoId();
+                if (tributoId == null) {
+                    if ("7152".equals(tg.getCodigoTributo()) || "ICBPER".equalsIgnoreCase(tg.getNombreTributo())) {
+                        tributoId = 3L;
+                    } else if ("2000".equals(tg.getCodigoTributo()) || "ISC".equalsIgnoreCase(tg.getNombreTributo())) {
+                        tributoId = 2L;
+                    } else {
+                        tributoId = 1L;
+                    }
+                }
                 DocumentoTributoEntity dte = DocumentoTributoEntity.builder()
                         .documento(entity)
-                        .tributoId(tg.getTributoId() != null ? tg.getTributoId() : 1L)
+                        .tributoId(tributoId)
                         .baseImponible(tg.getBaseImponible())
                         .monto(tg.getMonto())
                         .build();
@@ -221,16 +252,55 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
                     }
                 }
 
+                BigDecimal subtotalCalc = (d.getTotal() != null && d.getTotalTributos() != null)
+                        ? d.getTotal().subtract(d.getTotalTributos())
+                        : (d.getValorUnitario() != null && d.getCantidad() != null
+                            ? d.getValorUnitario().multiply(d.getCantidad())
+                            : BigDecimal.ZERO);
+                BigDecimal precioUnitarioCalc = (d.getCantidad() != null && d.getCantidad().compareTo(BigDecimal.ZERO) > 0 && d.getTotal() != null)
+                        ? d.getTotal().divide(d.getCantidad(), 4, java.math.RoundingMode.HALF_UP)
+                        : d.getValorUnitario();
+
                 lineas.add(LineaComprobante.builder()
                         .item(d.getItem())
                         .descripcion(d.getDescripcion())
                         .cantidad(d.getCantidad())
                         .unidadMedida(d.getUnidadMedida())
                         .valorUnitario(d.getValorUnitario())
+                        .precioUnitario(precioUnitarioCalc)
+                        .subtotal(subtotalCalc)
                         .tipoAfectacion(TipoAfectacionIgv.fromCodigo(d.getTipoAfectacion()))
                         .totalTributos(d.getTotalTributos())
                         .total(d.getTotal())
                         .tributos(tribs)
+                        .build());
+            }
+        }
+
+        List<TributoLinea> tributosGlob = new ArrayList<>();
+        if (e.getTributos() != null) {
+            for (DocumentoTributoEntity tg : e.getTributos()) {
+                String codigoTributo = "1000";
+                String nombreTributo = "IGV";
+                String tipoTributo = "VAT";
+                if (tg.getTributoId() != null) {
+                    if (tg.getTributoId() == 3L) {
+                        codigoTributo = "7152";
+                        nombreTributo = "ICBPER";
+                        tipoTributo = "OTH";
+                    } else if (tg.getTributoId() == 2L) {
+                        codigoTributo = "2000";
+                        nombreTributo = "ISC";
+                        tipoTributo = "EXC";
+                    }
+                }
+                tributosGlob.add(TributoLinea.builder()
+                        .tributoId(tg.getTributoId())
+                        .codigoTributo(codigoTributo)
+                        .nombreTributo(nombreTributo)
+                        .tipoTributo(tipoTributo)
+                        .baseImponible(tg.getBaseImponible())
+                        .monto(tg.getMonto())
                         .build());
             }
         }
@@ -297,6 +367,33 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
                     .orElse("0000");
         }
 
+        String estadoSunat = null;
+        String codigoSunat = null;
+        String mensajeSunat = null;
+        String xmlUrl = null;
+        String cdrUrl = null;
+
+        if (e.getId() != null) {
+            if (sunatJpaRepository != null) {
+                var sunatOpt = sunatJpaRepository.findByDocumentoId(e.getId());
+                if (sunatOpt.isPresent()) {
+                    estadoSunat = sunatOpt.get().getEstadoSunat();
+                    codigoSunat = sunatOpt.get().getCodigoRespuestaSunat();
+                    mensajeSunat = sunatOpt.get().getMensajeSunat();
+                }
+            }
+            if (archivoJpaRepository != null) {
+                var archivos = archivoJpaRepository.findByDocumentoId(e.getId());
+                for (var a : archivos) {
+                    if ("XML".equalsIgnoreCase(a.getTipoArchivo())) {
+                        xmlUrl = a.getRutaArchivo();
+                    } else if ("CDR".equalsIgnoreCase(a.getTipoArchivo())) {
+                        cdrUrl = a.getRutaArchivo();
+                    }
+                }
+            }
+        }
+
         return ComprobanteFiscal.builder()
                 .id(e.getId())
                 .claveIdempotencia(e.getClaveIdempotencia())
@@ -319,8 +416,14 @@ public class DocumentoRepositoryAdapter implements DocumentoRepositoryPort {
                 .total(e.getTotal())
                 .estadoInterno(e.getEstadoInterno())
                 .hashCpe(e.getHashCpe())
+                .estadoSunat(estadoSunat)
+                .codigoSunat(codigoSunat)
+                .mensajeSunat(mensajeSunat)
+                .xmlUrl(xmlUrl)
+                .cdrUrl(cdrUrl)
                 .detalles(lineas)
                 .totalesAfectacion(totalesAf)
+                .tributosGlobales(tributosGlob)
                 .cuotas(cuotas)
                 .detraccion(det)
                 .referencias(refs)
