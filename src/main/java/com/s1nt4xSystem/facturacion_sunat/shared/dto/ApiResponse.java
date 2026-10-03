@@ -1,6 +1,7 @@
 package com.s1nt4xSystem.facturacion_sunat.shared.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,10 @@ import java.time.LocalDateTime;
 public class ApiResponse<T> {
 
     private boolean success;
+
+    @JsonProperty("codigo_error")
+    private Integer codigoError;
+
     private String message;
     private T data;
     @Builder.Default
@@ -42,9 +47,28 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    public static <T> ApiResponse<T> error(int codigoError, String message) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .codigoError(codigoError)
+                .message(message)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
     public static <T> ApiResponse<T> error(String message, T data) {
         return ApiResponse.<T>builder()
                 .success(false)
+                .message(message)
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(int codigoError, String message, T data) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .codigoError(codigoError)
                 .message(message)
                 .data(data)
                 .timestamp(LocalDateTime.now())

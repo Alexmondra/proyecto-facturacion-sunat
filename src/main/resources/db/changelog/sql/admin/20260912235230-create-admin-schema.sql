@@ -5,6 +5,8 @@
 -- ============================================================================
 
 -- changeset alex:001-initial-admin-schema.sql
+-- validCheckSum: 9:eb6c6ea9ed9655033757ace2645bfeed
+-- validCheckSum: ANY
 
 -- 1. TABLA PLANES
 CREATE TABLE planes (
@@ -95,6 +97,17 @@ CREATE TABLE proveedores_pse (
     activo BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- 7. TABLA PLANTILLAS BASE (PLANTILLAS DEL SISTEMA)
+CREATE TABLE plantillas_base (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    tipo_formato VARCHAR(20) NOT NULL,
+    layout_base JSONB NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- rollback DROP TABLE plantillas_base;
 -- rollback ALTER TABLE empresa_modulos DROP CONSTRAINT fk_empresa_modulo_modulo;
 -- rollback ALTER TABLE empresa_modulos DROP CONSTRAINT fk_empresa_modulo_router;
 -- rollback DROP TABLE empresa_modulos;

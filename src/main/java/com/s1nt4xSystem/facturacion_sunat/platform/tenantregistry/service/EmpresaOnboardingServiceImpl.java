@@ -8,10 +8,12 @@ import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.dto.EmpresaRou
 import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.dto.EmpresaUpdateRequest;
 import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.model.EmpresaRouter;
 import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.repository.EmpresaRouterRepository;
-import com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException;
-import com.s1nt4xSystem.facturacion_sunat.shared.exception.ResourceNotFoundException;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.validation.EmpresaRouterValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -34,45 +36,48 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
     private final TenantLiquibaseMigrator tenantLiquibaseMigrator;
     private final JdbcTemplate jdbcTemplate;
     private final String storageBasePath;
+    private final EmpresaRouterValidator empresaRouterValidator;
+
+    @Autowired
+    public EmpresaOnboardingServiceImpl(
+            EmpresaRouterRepository empresaRouterRepository,
+            CuentaSaasService cuentaSaasService,
+            TenantLiquibaseMigrator tenantLiquibaseMigrator,
+            JdbcTemplate jdbcTemplate,
+            @Value("${app.storage.base-path:storage}") String storageBasePath,
+            EmpresaRouterValidator empresaRouterValidator) {
+        this.empresaRouterRepository = empresaRouterRepository;
+        this.cuentaSaasService = cuentaSaasService;
+        this.tenantLiquibaseMigrator = tenantLiquibaseMigrator;
+        this.jdbcTemplate = jdbcTemplate;
+        this.storageBasePath = storageBasePath;
+        this.empresaRouterValidator = empresaRouterValidator;
+    }
 
     public EmpresaOnboardingServiceImpl(
             EmpresaRouterRepository empresaRouterRepository,
             CuentaSaasService cuentaSaasService,
             TenantLiquibaseMigrator tenantLiquibaseMigrator,
             JdbcTemplate jdbcTemplate,
-            @Value("${app.storage.base-path:storage}") String storageBasePath) {
-        this.empresaRouterRepository = empresaRouterRepository;
-        this.cuentaSaasService = cuentaSaasService;
-        this.tenantLiquibaseMigrator = tenantLiquibaseMigrator;
-        this.jdbcTemplate = jdbcTemplate;
-        this.storageBasePath = storageBasePath;
+            String storageBasePath) {
+        this(empresaRouterRepository, cuentaSaasService, tenantLiquibaseMigrator, jdbcTemplate, storageBasePath,
+                new EmpresaRouterValidator(empresaRouterRepository));
     }
 
     @Override
     public EmpresaRouterResponse onboardEmpresa(EmpresaOnboardingRequest request) {
         log.info("Iniciando onboarding para empresa RUC: {}", request.getRuc());
 
+        String schemaName = "tenant_" + (request.getRuc() != null ? request.getRuc().trim() : "");
+        empresaRouterValidator.validateOnboarding(request, schemaName, request.getAccessKey());
+
         // 1. Validar que la cuenta SaaS exista
         CuentaSaas cuentaSaas = cuentaSaasService.getAccountEntity(request.getSaasId());
 
-        // 2. Validar que el RUC no esté ya registrado en empresas_router
-        if (empresaRouterRepository.existsByRuc(request.getRuc())) {
-            throw new DomainException("El RUC " + request.getRuc() + " ya se encuentra registrado en el sistema");
-        }
-
-        // 3. Generar el nombre del esquema PostgreSQL aislado para este tenant
-        String schemaName = "tenant_" + request.getRuc().trim();
-        if (empresaRouterRepository.existsByDbSchema(schemaName)) {
-            throw new DomainException("El esquema " + schemaName + " ya existe");
-        }
-
-        // 4. Guardar el registro de enrutamiento en public.empresas_router
+        // 2. Resolver o generar Access Key
         String empAccessKey = request.getAccessKey();
         if (empAccessKey != null && !empAccessKey.trim().isEmpty()) {
             empAccessKey = empAccessKey.trim();
-            if (empresaRouterRepository.existsByAccessKey(empAccessKey)) {
-                throw new DomainException("La accessKey ya está en uso por otra empresa");
-            }
         } else {
             empAccessKey = "ak_emp_" + UUID.randomUUID().toString().replace("-", "");
         }
@@ -146,6 +151,23 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
             jdbcTemplate.update(insertSeriesSql);
             log.info("Sucursal principal '0000' y series iniciales (incluyendo NV01) sembradas para esquema {}", schemaName);
 
+            // 6.4. Sembrar Plantillas de Impresión base (A4 y TICKET_80) desde public.plantillas_base
+            // Se registran con empresa_id y sucursal_id = NULL para que apliquen a todas las sucursales por defecto
+            String insertPlantillasSql = String.format(
+                    "INSERT INTO %s.plantillas_impresion (id, empresa_id, sucursal_id, nombre, tipo_formato, layout) " +
+                    "SELECT uuidv7(), e.id, NULL, pb.nombre, pb.tipo_formato, pb.layout_base " +
+                    "FROM %s.empresas e " +
+                    "CROSS JOIN public.plantillas_base pb " +
+                    "WHERE pb.tipo_formato IN ('A4', 'TICKET_80') AND pb.activo = true " +
+                    "AND NOT EXISTS ( " +
+                    "   SELECT 1 FROM %s.plantillas_impresion pi " +
+                    "   WHERE pi.empresa_id = e.id AND pi.sucursal_id IS NULL AND pi.tipo_formato = pb.tipo_formato" +
+                    ")",
+                    schemaName, schemaName, schemaName
+            );
+            jdbcTemplate.update(insertPlantillasSql);
+            log.info("Plantillas de impresión estándar (A4 y TICKET_80) sembradas para esquema {}", schemaName);
+
         } catch (Exception e) {
             log.error("Error al sembrar la empresa en el esquema {}: {}", schemaName, e.getMessage(), e);
             throw new DomainException("Se creó el esquema pero falló la inicialización de los datos de la empresa: " + e.getMessage());
@@ -211,11 +233,8 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
         }
 
         if (request.getEstado() != null && !request.getEstado().isBlank()) {
-            String st = request.getEstado().trim().toUpperCase();
-            if (!st.equals("ACTIVO") && !st.equals("INACTIVO") && !st.equals("SUSPENDIDO")) {
-                throw new DomainException("Estado no permitido. Valores válidos: ACTIVO, INACTIVO, SUSPENDIDO");
-            }
-            router.setEstado(st);
+            empresaRouterValidator.validateEstado(request.getEstado());
+            router.setEstado(request.getEstado().trim().toUpperCase());
         }
 
         EmpresaRouter saved = empresaRouterRepository.save(router);
@@ -243,6 +262,7 @@ public class EmpresaOnboardingServiceImpl implements EmpresaOnboardingService {
     @Override
     @Transactional
     public EmpresaRouterResponse updateEstado(Long id, String estado) {
+        empresaRouterValidator.validateEstado(estado);
         EmpresaRouter router = empresaRouterRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa Router", id));
 

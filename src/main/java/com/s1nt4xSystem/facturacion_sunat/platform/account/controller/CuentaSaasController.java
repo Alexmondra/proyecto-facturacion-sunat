@@ -33,7 +33,7 @@ public class CuentaSaasController {
         com.s1nt4xSystem.facturacion_sunat.infrastructure.security.AuthenticatedPrincipal principal =
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
         if (principal != null && !principal.isAdmin()) {
-            throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Acceso denegado: Solo el Administrador puede listar todas las cuentas");
+            throw new com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException("Acceso denegado: Solo el Administrador puede listar todas las cuentas");
         }
         return ResponseEntity.ok(ApiResponse.ok(cuentaSaasService.getAllAccounts()));
     }
@@ -67,7 +67,7 @@ public class CuentaSaasController {
         com.s1nt4xSystem.facturacion_sunat.infrastructure.security.AuthenticatedPrincipal principal =
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
         if (principal != null && !principal.isAdmin()) {
-            throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Solo el Administrador del sistema puede suspender o activar cuentas");
+            throw new com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException("Solo el Administrador del sistema puede suspender o activar cuentas");
         }
         return ResponseEntity.ok(ApiResponse.ok(cuentaSaasService.updateStatus(id, estado), "Estado de la cuenta SaaS actualizado"));
     }
@@ -83,7 +83,7 @@ public class CuentaSaasController {
         com.s1nt4xSystem.facturacion_sunat.infrastructure.security.AuthenticatedPrincipal principal =
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
         if (principal != null && !principal.isAdmin()) {
-            throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Solo el Administrador del sistema puede dar de baja cuentas");
+            throw new com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException("Solo el Administrador del sistema puede dar de baja cuentas");
         }
         cuentaSaasService.deleteAccount(id);
         return ResponseEntity.ok(ApiResponse.ok(null, "Cuenta SaaS desactivada exitosamente"));
@@ -93,7 +93,7 @@ public class CuentaSaasController {
         com.s1nt4xSystem.facturacion_sunat.infrastructure.security.AuthenticatedPrincipal principal =
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
         if (principal != null && principal.isCliente() && !accountId.equals(principal.getSaasId())) {
-            throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Acceso denegado: No puede consultar o modificar otra cuenta SaaS");
+            throw new com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException("Acceso denegado: No puede consultar o modificar otra cuenta SaaS");
         }
     }
 }

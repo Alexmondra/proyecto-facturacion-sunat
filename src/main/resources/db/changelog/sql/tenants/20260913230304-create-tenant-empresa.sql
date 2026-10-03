@@ -5,6 +5,7 @@
 -- ============================================================================
 
 -- changeset alex:tenant-001-create-tenant-empresa
+-- validCheckSum: ANY
 
 -- 1. TABLA EMPRESAS
 CREATE TABLE empresas (
@@ -67,7 +68,7 @@ CREATE TABLE series (
     serie VARCHAR(10) NOT NULL,
     correlativo INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT fk_series_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE,
-    CONSTRAINT uq_serie_sucursal_tipo UNIQUE (sucursal_id, tipo_comprobante, serie)
+    CONSTRAINT uq_serie_tipo_comprobante UNIQUE (tipo_comprobante, serie)
 );
 
 -- 5. DOCUMENTOS FISCALES (CABECERA)
@@ -335,9 +336,34 @@ CREATE INDEX idx_resumen_fecha_estado ON resumen_diarios(fecha_documentos, estad
 CREATE INDEX idx_resumen_docs_resumen_id ON resumen_diario_documentos(resumen_diario_id);
 CREATE INDEX idx_resumen_docs_documento_id ON resumen_diario_documentos(documento_id);
 
+-- 15. TABLA PLANTILLAS DE IMPRESIÓN (PERSONALIZADAS POR EMPRESA / SUCURSAL)
+CREATE TABLE plantillas_impresion (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
+    empresa_id UUID NOT NULL,
+    sucursal_id UUID, -- NULL = general para toda la empresa; con UUID = exclusiva de esa sucursal
+    nombre VARCHAR(100) NOT NULL DEFAULT 'Plantilla Estándar',
+    tipo_formato VARCHAR(20) NOT NULL, -- 'TICKET_80', 'TICKET_58', 'A4'
+    layout JSONB NOT NULL,
+    estado BOOLEAN NOT NULL DEFAULT true,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_plantillas_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+    CONSTRAINT fk_plantillas_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
+);
+
+-- Asegura solo un diseño activo por formato a nivel global de empresa
+CREATE UNIQUE INDEX uq_plantilla_empresa_global 
+ON plantillas_impresion (empresa_id, tipo_formato) 
+WHERE sucursal_id IS NULL;
+
+-- Asegura solo un diseño activo por formato por sucursal específica
+CREATE UNIQUE INDEX uq_plantilla_sucursal_especifica 
+ON plantillas_impresion (empresa_id, sucursal_id, tipo_formato) 
+WHERE sucursal_id IS NOT NULL;
+
 -- ----------------------------------------------------------------------------
 -- ROLLBACK EN ORDEN INVERSO ESTRICTO (HIJOS PRIMERO, PADRES AL FINAL)
 -- ----------------------------------------------------------------------------
+-- rollback DROP TABLE IF EXISTS plantillas_impresion CASCADE;
 -- rollback DROP TABLE IF EXISTS resumen_diario_archivos CASCADE;
 -- rollback DROP TABLE IF EXISTS resumen_diario_documentos CASCADE;
 -- rollback DROP TABLE IF EXISTS resumen_diarios CASCADE;
