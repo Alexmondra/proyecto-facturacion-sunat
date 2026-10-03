@@ -4,8 +4,15 @@ import com.s1nt4xSystem.facturacion_sunat.platform.plan.dto.PlanRequest;
 import com.s1nt4xSystem.facturacion_sunat.platform.plan.dto.PlanResponse;
 import com.s1nt4xSystem.facturacion_sunat.platform.plan.model.Plan;
 import com.s1nt4xSystem.facturacion_sunat.platform.plan.repository.PlanRepository;
-import com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException;
-import com.s1nt4xSystem.facturacion_sunat.shared.exception.ResourceNotFoundException;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.ResourceNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import com.s1nt4xSystem.facturacion_sunat.platform.plan.validation.PlanValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +23,21 @@ import java.util.List;
 public class PlanServiceImpl implements PlanService {
 
     private final PlanRepository planRepository;
+    private final PlanValidator planValidator;
+
+    @Autowired
+    public PlanServiceImpl(PlanRepository planRepository, PlanValidator planValidator) {
+        this.planRepository = planRepository;
+        this.planValidator = planValidator;
+    }
 
     public PlanServiceImpl(PlanRepository planRepository) {
-        this.planRepository = planRepository;
+        this(planRepository, new PlanValidator(planRepository));
     }
 
     @Override
     public PlanResponse createPlan(PlanRequest request) {
-        if (request.getCodigo() != null && planRepository.existsByCodigo(request.getCodigo())) {
-            throw new DomainException("Ya existe un plan con el código: " + request.getCodigo());
-        }
+        planValidator.validateNewPlan(request);
         Plan plan = Plan.builder()
                 .nombrePlan(request.getNombrePlan())
                 .codigo(request.getCodigo())
@@ -61,10 +73,7 @@ public class PlanServiceImpl implements PlanService {
     @Override
     public PlanResponse updatePlan(Integer id, PlanRequest request) {
         Plan plan = getPlanEntity(id);
-        if (request.getCodigo() != null && !request.getCodigo().equalsIgnoreCase(plan.getCodigo())
-                && planRepository.existsByCodigo(request.getCodigo())) {
-            throw new DomainException("El código " + request.getCodigo() + " ya está en uso por otro plan");
-        }
+        planValidator.validateUpdatePlan(plan, request);
         plan.setNombrePlan(request.getNombrePlan());
         plan.setCodigo(request.getCodigo());
         plan.setLimiteMensualBolsa(request.getLimiteMensualBolsa());

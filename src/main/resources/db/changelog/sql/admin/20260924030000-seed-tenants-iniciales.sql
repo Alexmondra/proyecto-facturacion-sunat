@@ -1,5 +1,4 @@
 -- liquibase formatted sql
-
 -- ============================================================================
 -- SEEDER INICIAL: PLANES, MÓDULO FACTURACIÓN, CUENTAS SAAS Y TENANT OFICIAL SUNAT
 -- ============================================================================

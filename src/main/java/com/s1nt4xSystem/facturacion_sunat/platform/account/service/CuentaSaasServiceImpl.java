@@ -6,8 +6,10 @@ import com.s1nt4xSystem.facturacion_sunat.platform.account.model.CuentaSaas;
 import com.s1nt4xSystem.facturacion_sunat.platform.account.repository.CuentaSaasRepository;
 import com.s1nt4xSystem.facturacion_sunat.platform.plan.model.Plan;
 import com.s1nt4xSystem.facturacion_sunat.platform.plan.service.PlanService;
-import com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException;
-import com.s1nt4xSystem.facturacion_sunat.shared.exception.ResourceNotFoundException;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.DomainException;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.ResourceNotFoundException;
+import com.s1nt4xSystem.facturacion_sunat.platform.account.validation.CuentaSaasValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,21 +22,31 @@ public class CuentaSaasServiceImpl implements CuentaSaasService {
 
     private final CuentaSaasRepository cuentaSaasRepository;
     private final PlanService planService;
+    private final CuentaSaasValidator cuentaSaasValidator;
 
-    public CuentaSaasServiceImpl(CuentaSaasRepository cuentaSaasRepository, PlanService planService) {
+    @Autowired
+    public CuentaSaasServiceImpl(CuentaSaasRepository cuentaSaasRepository,
+                                 PlanService planService,
+                                 CuentaSaasValidator cuentaSaasValidator) {
         this.cuentaSaasRepository = cuentaSaasRepository;
         this.planService = planService;
+        this.cuentaSaasValidator = cuentaSaasValidator;
+    }
+
+    public CuentaSaasServiceImpl(CuentaSaasRepository cuentaSaasRepository, PlanService planService) {
+        this(cuentaSaasRepository, planService, new CuentaSaasValidator(cuentaSaasRepository));
     }
 
     @Override
     public CuentaSaasResponse createAccount(CuentaSaasRequest request) {
+        cuentaSaasValidator.validateNewAccount(request);
         Plan plan = planService.getPlanEntity(request.getPlanId());
 
         String accessKey = request.getAccessKey();
         if (accessKey == null || accessKey.trim().isEmpty()) {
             accessKey = "ak_" + UUID.randomUUID().toString().replace("-", "");
-        } else if (cuentaSaasRepository.existsByAccessKey(accessKey)) {
-            throw new DomainException("La accessKey ya existe en el sistema");
+        } else {
+            accessKey = accessKey.trim();
         }
 
         CuentaSaas cuenta = CuentaSaas.builder()

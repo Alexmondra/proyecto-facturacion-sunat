@@ -1,9 +1,7 @@
 package com.s1nt4xSystem.facturacion_sunat.infrastructure.security;
 
-import com.s1nt4xSystem.facturacion_sunat.platform.account.model.CuentaSaas;
-import com.s1nt4xSystem.facturacion_sunat.platform.account.repository.CuentaSaasRepository;
-import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.model.EmpresaRouter;
-import com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.repository.EmpresaRouterRepository;
+import com.s1nt4xSystem.facturacion_sunat.infrastructure.security.validation.SecurityValidator;
+import com.s1nt4xSystem.facturacion_sunat.shared.errors.BusinessException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,20 +16,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Optional;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
-    private final CuentaSaasRepository cuentaSaasRepository;
-    private final EmpresaRouterRepository empresaRouterRepository;
+    private final SecurityValidator securityValidator;
 
-    public ApiKeyAuthenticationFilter(
-            CuentaSaasRepository cuentaSaasRepository,
-            EmpresaRouterRepository empresaRouterRepository) {
-        this.cuentaSaasRepository = cuentaSaasRepository;
-        this.empresaRouterRepository = empresaRouterRepository;
+    public ApiKeyAuthenticationFilter(SecurityValidator securityValidator) {
+        this.securityValidator = securityValidator;
     }
 
     @Override
@@ -48,14 +41,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Únicamente el método GET de la API de planes es público (para landing/precios)
-        if (path.startsWith("/api/v1/platform/plans") && HttpMethod.GET.matches(request.getMethod())) {
+        // Rutas públicas de consulta / descarga sin autenticación (planes y descargas públicas)
+        if ((path.startsWith("/api/v1/platform/plans") || path.startsWith("/api/v1/public/")) && HttpMethod.GET.matches(request.getMethod())) {
             String token = extractToken(request);
-            if (token != null && !token.isBlank()) {
-                AuthenticatedPrincipal principal = resolvePrincipal(token);
-                if (principal != null) {
-                    SecurityContext.setPrincipal(principal);
-                }
+            AuthenticatedPrincipal principal = securityValidator.resolvePrincipalQuietly(token);
+            if (principal != null) {
+                SecurityContext.setPrincipal(principal);
             }
             try {
                 filterChain.doFilter(request, response);
@@ -65,56 +56,25 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 1. Extraer token (soporta tanto 'Authorization: Bearer <key>' como 'X-API-Key: <key>')
-        String token = extractToken(request);
-        if (token == null || token.isBlank()) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED,
-                    "Se requiere autenticación. Envíe su Access Key mediante cabecera 'Authorization: Bearer <key>' o 'X-API-Key: <key>'");
-            return;
-        }
-
-        // 2. Validar Token en Cuentas SaaS o en Empresas Router
-        AuthenticatedPrincipal principal = resolvePrincipal(token);
-        if (principal == null) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "Access Key inválida o inexistente");
-            return;
-        }
-
-        // 3. Validar permisos de nivel plataforma
-        if (path.startsWith("/api/v1/platform")) {
-            if (principal.isEmpresa()) {
-                writeErrorResponse(response, HttpStatus.FORBIDDEN,
-                        "Las llaves de empresa no tienen permisos para acceder a la administración de plataforma");
-                return;
-            }
-
-            // Solo el ADMIN puede crear, modificar o eliminar planes
-            if (path.startsWith("/api/v1/platform/plans") && !principal.isAdmin()) {
-                writeErrorResponse(response, HttpStatus.FORBIDDEN,
-                        "Solo el Administrador del sistema puede crear, modificar o eliminar planes comerciales");
-                return;
-            }
-
-            // Restricciones de cuentas para rol CLIENTE
-            if (path.startsWith("/api/v1/platform/accounts")) {
-                if (principal.isCliente()) {
-                    if (HttpMethod.POST.matches(request.getMethod())) {
-                        writeErrorResponse(response, HttpStatus.FORBIDDEN,
-                                "Solo el Administrador del sistema puede dar de alta nuevas cuentas SaaS");
-                        return;
-                    }
-                    if (path.equals("/api/v1/platform/accounts") || path.equals("/api/v1/platform/accounts/")) {
-                        writeErrorResponse(response, HttpStatus.FORBIDDEN,
-                                "Solo el Administrador del sistema puede listar todas las cuentas SaaS");
-                        return;
-                    }
-                }
-            }
-        }
-
         try {
+            // 1. Extraer y validar token presente
+            String token = extractToken(request);
+
+            // 2. Validar token y resolver AuthenticatedPrincipal
+            AuthenticatedPrincipal principal = securityValidator.validateAndResolvePrincipal(token);
+
+            // 3. Validar permisos de nivel plataforma
+            if (path.startsWith("/api/v1/platform")) {
+                securityValidator.validatePlatformAccess(principal, path, request.getMethod());
+            }
+
             SecurityContext.setPrincipal(principal);
             filterChain.doFilter(request, response);
+
+        } catch (BusinessException be) {
+            writeErrorResponse(response, be);
+        } catch (Exception e) {
+            writeErrorResponse(response, HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         } finally {
             SecurityContext.clear();
         }
@@ -137,41 +97,13 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private AuthenticatedPrincipal resolvePrincipal(String token) {
-        // A. Buscar en cuentas_saas
-        Optional<CuentaSaas> cuentaOpt = cuentaSaasRepository.findByAccessKey(token);
-        if (cuentaOpt.isPresent()) {
-            CuentaSaas cuenta = cuentaOpt.get();
-            if (Boolean.FALSE.equals(cuenta.getEstado())) {
-                return null; // Cuenta inactiva
-            }
-            return AuthenticatedPrincipal.builder()
-                    .saasId(cuenta.getId())
-                    .tipo(cuenta.getTipo() != null ? cuenta.getTipo() : "CLIENTE")
-                    .empresaRouter(null)
-                    .accessKey(token)
-                    .build();
-        }
-
-        // B. Buscar en empresas_router
-        Optional<EmpresaRouter> empresaOpt = empresaRouterRepository.findByAccessKey(token);
-        if (empresaOpt.isPresent()) {
-            EmpresaRouter router = empresaOpt.get();
-            if (!"ACTIVO".equalsIgnoreCase(router.getEstado())) {
-                return null; // Empresa inactiva
-            }
-            if (Boolean.FALSE.equals(router.getCuentaSaas().getEstado())) {
-                return null; // Cuenta matriz inactiva
-            }
-            return AuthenticatedPrincipal.builder()
-                    .saasId(router.getCuentaSaas().getId())
-                    .tipo("EMPRESA")
-                    .empresaRouter(router)
-                    .accessKey(token)
-                    .build();
-        }
-
-        return null;
+    private void writeErrorResponse(HttpServletResponse response, BusinessException be) throws IOException {
+        response.setStatus(be.getHttpStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        String json = String.format("{\"success\":false,\"codigo_error\":%d,\"message\":\"%s\",\"data\":null,\"timestamp\":\"%s\"}",
+                be.getCode(), be.getMessage().replace("\"", "\\\""), Instant.now());
+        response.getWriter().write(json);
     }
 
     private void writeErrorResponse(HttpServletResponse response, HttpStatus status, String message) throws IOException {
@@ -179,7 +111,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
         String json = String.format("{\"success\":false,\"message\":\"%s\",\"data\":null,\"timestamp\":\"%s\"}",
-                message.replace("\"", "\\\""), Instant.now());
+                message != null ? message.replace("\"", "\\\"") : "", Instant.now());
         response.getWriter().write(json);
     }
 }

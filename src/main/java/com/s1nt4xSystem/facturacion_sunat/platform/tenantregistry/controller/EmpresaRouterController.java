@@ -16,9 +16,13 @@ import java.util.List;
 public class EmpresaRouterController {
 
     private final EmpresaOnboardingService onboardingService;
+    private final com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.validation.EmpresaRouterValidator empresaRouterValidator;
 
-    public EmpresaRouterController(EmpresaOnboardingService onboardingService) {
+    public EmpresaRouterController(
+            EmpresaOnboardingService onboardingService,
+            com.s1nt4xSystem.facturacion_sunat.platform.tenantregistry.validation.EmpresaRouterValidator empresaRouterValidator) {
         this.onboardingService = onboardingService;
+        this.empresaRouterValidator = empresaRouterValidator;
     }
 
     @PostMapping("/onboard")
@@ -49,8 +53,8 @@ public class EmpresaRouterController {
         EmpresaRouterResponse response = onboardingService.getEmpresaRouterById(id);
         com.s1nt4xSystem.facturacion_sunat.infrastructure.security.AuthenticatedPrincipal principal =
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
-        if (principal != null && principal.isCliente() && !response.getSaasId().equals(principal.getSaasId())) {
-            throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Acceso denegado: Esta empresa no pertenece a su cuenta SaaS");
+        if (principal != null && principal.isCliente()) {
+            empresaRouterValidator.validateAccountOwnership(response, principal.getSaasId());
         }
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -59,8 +63,8 @@ public class EmpresaRouterController {
     public ResponseEntity<ApiResponse<List<EmpresaRouterResponse>>> getCompaniesByAccountId(@PathVariable Long saasId) {
         com.s1nt4xSystem.facturacion_sunat.infrastructure.security.AuthenticatedPrincipal principal =
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
-        if (principal != null && principal.isCliente() && !saasId.equals(principal.getSaasId())) {
-            throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Acceso denegado: No puede consultar empresas de otra cuenta SaaS");
+        if (principal != null && principal.isCliente()) {
+            empresaRouterValidator.validateSameAccountAccess(saasId, principal.getSaasId());
         }
         return ResponseEntity.ok(ApiResponse.ok(onboardingService.getEmpresasBySaasId(saasId)));
     }
@@ -99,9 +103,7 @@ public class EmpresaRouterController {
                 com.s1nt4xSystem.facturacion_sunat.infrastructure.security.SecurityContext.getPrincipal();
         if (principal != null && principal.isCliente()) {
             EmpresaRouterResponse company = onboardingService.getEmpresaRouterById(empresaRouterId);
-            if (!company.getSaasId().equals(principal.getSaasId())) {
-                throw new com.s1nt4xSystem.facturacion_sunat.shared.exception.DomainException("Acceso denegado: Esta empresa no pertenece a su cuenta SaaS");
-            }
+            empresaRouterValidator.validateAccountOwnership(company, principal.getSaasId());
         }
     }
 }
